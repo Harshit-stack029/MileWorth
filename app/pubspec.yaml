@@ -55,6 +55,8 @@ dependencies:
   in_app_purchase: ^3.2.0
   # Render brand SVG logo in-app
   flutter_svg: ^2.0.10+1
+  # Native splash runtime control (preserve/remove); generator config below
+  flutter_native_splash: ^2.4.1
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +70,14 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   # Generates launcher icons from the brand mark
   flutter_launcher_icons: ^0.14.1
+
+# Splash generation: run `dart run flutter_native_splash:create`
+flutter_native_splash:
+  color: "#0C2640"               # brand navy-deep background
+  image: assets/brand/icon-foreground-1024.png
+  android_12:
+    color: "#0C2640"
+    image: assets/brand/icon-foreground-1024.png
 
 # Launcher icon generation: run `dart run flutter_launcher_icons`
 flutter_launcher_icons:

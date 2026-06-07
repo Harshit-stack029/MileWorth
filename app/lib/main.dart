@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/home_shell.dart';
@@ -10,6 +11,9 @@ import 'state/app_state.dart';
 import 'theme.dart';
 
 void main() {
+  // Hold the native splash until the app has bootstrapped (see _AuthGate).
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: binding);
   runApp(
     MultiProvider(
       providers: [
@@ -60,6 +64,10 @@ class _AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = context.watch<AppState>().status;
+    // Once auth is resolved, hand off from the native splash to the UI.
+    if (status != AuthStatus.unknown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => FlutterNativeSplash.remove());
+    }
     switch (status) {
       case AuthStatus.unknown:
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
