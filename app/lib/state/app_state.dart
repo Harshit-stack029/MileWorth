@@ -194,7 +194,8 @@ class AppState extends ChangeNotifier {
 
   /// Activate Pro after a Play Billing purchase. In production the backend
   /// verifies [purchaseToken] with Google before flipping the status.
-  Future<void> verifySubscription({
+  /// Returns true if the account is now subscribed.
+  Future<bool> verifySubscription({
     required String purchaseToken,
     required String productId,
   }) async {
@@ -204,6 +205,7 @@ class AppState extends ChangeNotifier {
     });
     user = AppUser.fromJson(res['user']);
     notifyListeners();
+    return user?.isSubscribed ?? false;
   }
 
   Future<void> updateSettings({

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
 import 'services/auto_trip_detector.dart';
+import 'services/subscription_service.dart';
 import 'services/trip_tracker.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
@@ -21,6 +22,16 @@ void main() {
             onTripComplete: (payload) => ctx.read<AppState>().addTrip(payload),
           )..load(),
           update: (_, _, _, detector) => detector!,
+        ),
+        // Billing: verifies purchases through AppState -> backend.
+        ChangeNotifierProxyProvider<AppState, SubscriptionService>(
+          create: (ctx) => SubscriptionService(
+            onVerify: (token, productId) => ctx.read<AppState>().verifySubscription(
+                  purchaseToken: token,
+                  productId: productId,
+                ),
+          )..init(),
+          update: (_, _, service) => service!,
         ),
       ],
       child: const MileWorthApp(),

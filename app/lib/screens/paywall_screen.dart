@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/subscription_service.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 
 /// Pro upgrade screen, shown at peak perceived value (exporting a report or
 /// viewing the deduction total).
 ///
-/// Real Google Play Billing uses the `in_app_purchase` plugin to launch the
-/// purchase flow and obtain a purchaseToken, which the backend verifies. That
-/// flow needs a Play Console product + signed build, so this screen calls the
-/// backend's verify endpoint with a placeholder token (the backend only honours
-/// it in non-production). See SubscriptionService for the wiring point.
+/// Uses the real [SubscriptionService] (Google Play / App Store) when the store
+/// is available. On emulators or before the Play product is configured, it
+/// falls back to the backend's dev activation so the flow stays testable.
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
 
-  static const monthlyProductId = 'mileworth_pro_monthly';
+  static const monthlyProductId = SubscriptionService.monthlyProductId;
 
   @override
   State<PaywallScreen> createState() => _PaywallScreenState();
@@ -33,21 +32,27 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   Future<void> _subscribe() async {
     setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final billing = context.read<SubscriptionService>();
     try {
-      // TODO: replace with in_app_purchase flow -> real purchaseToken.
-      await context.read<AppState>().verifySubscription(
-            purchaseToken: 'dev-placeholder-token',
-            productId: PaywallScreen.monthlyProductId,
-          );
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Welcome to MileWorth Pro!')));
-        Navigator.of(context).pop(true);
+      if (billing.available && billing.monthly != null) {
+        // Real store flow: the purchase stream drives verification; we pop when
+        // AppState reports the account is subscribed (see build()'s listener).
+        final started = await billing.buyMonthly();
+        if (!started) {
+          messenger.showSnackBar(
+              const SnackBar(content: Text('Could not start the purchase')));
+        }
+      } else {
+        // Dev fallback (store unavailable): activate via backend dev path.
+        final ok = await context.read<AppState>().verifySubscription(
+              purchaseToken: 'dev-placeholder-token',
+              productId: PaywallScreen.monthlyProductId,
+            );
+        if (ok && mounted) Navigator.of(context).pop(true);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -55,6 +60,24 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final billing = context.watch<SubscriptionService>();
+    final subscribed = context.select<AppState, bool>(
+      (s) => s.user?.isSubscribed ?? false,
+    );
+
+    // Once the (async) purchase verifies, close the paywall as a success.
+    if (subscribed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        }
+      });
+    }
+
+    final pending = _busy || billing.purchasePending;
+    final priceLabel =
+        billing.monthlyPrice != null ? 'Start Pro — ${billing.monthlyPrice}/mo' : 'Start Pro';
+
     return Scaffold(
       appBar: AppBar(title: const Text('MileWorth Pro')),
       body: ListView(
@@ -80,14 +103,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
               )),
           const SizedBox(height: 32),
           FilledButton(
-            onPressed: _busy ? null : _subscribe,
+            onPressed: pending ? null : _subscribe,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              child: _busy
+              child: pending
                   ? const SizedBox(
                       height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Start Pro'),
+                  : Text(priceLabel),
             ),
+          ),
+          TextButton(
+            onPressed: pending ? null : () => billing.restore(),
+            child: const Text('Restore purchase'),
           ),
           const SizedBox(height: 8),
           const Text(

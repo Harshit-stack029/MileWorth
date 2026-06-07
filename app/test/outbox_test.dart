@@ -32,7 +32,7 @@ void main() {
     await outbox.enqueue('/trips', {'distance': 10});
     await outbox.enqueue('/trips', {'distance': 20});
 
-    final sent = await outbox.flush((_, __) async => throw Exception('offline'));
+    final sent = await outbox.flush((_, _) async => throw Exception('offline'));
 
     expect(sent, 0);
     expect(await outbox.count(), 2);
@@ -45,7 +45,7 @@ void main() {
     await outbox.enqueue('/trips', {'n': 3});
 
     var calls = 0;
-    final sent = await outbox.flush((_, __) async {
+    final sent = await outbox.flush((_, _) async {
       calls++;
       if (calls == 2) throw Exception('drop');
     });
