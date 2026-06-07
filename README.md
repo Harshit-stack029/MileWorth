@@ -37,3 +37,31 @@ flutter run               # against a connected Android device/emulator
 ```
 
 Point the app at the backend via `--dart-define=API_BASE_URL=http://10.0.2.2:4000` (Android emulator) or your machine's LAN IP on a physical device.
+
+## Deploying the backend to Render
+
+The repo ships a [`render.yaml`](./render.yaml) Blueprint that provisions the API
+as a free Render web service.
+
+1. **Push to GitHub.** Render deploys from a git remote, so push this repo first.
+2. **Atlas network access.** In MongoDB Atlas → Network Access, add `0.0.0.0/0`
+   (allow from anywhere). Render's free tier uses dynamic outbound IPs, so an IP
+   allowlist won't work. The connection is still authenticated by the URI
+   credentials.
+3. **Create the service.** In Render → **New → Blueprint**, select the repo.
+   Render reads `render.yaml` and creates the `mileworth-api` web service
+   (`rootDir: backend`, `npm ci` → `npm start`, health check at `/health`).
+4. **Set the secret env var.** When prompted, paste your full Atlas connection
+   string (including `/mileworth`) into **`MONGODB_URI`**. `JWT_SECRET` is
+   auto-generated; the rest have defaults. `PORT` is injected by Render.
+5. **Deploy & verify.** Once live, hit `https://<your-service>.onrender.com/health`
+   — it should return `{"status":"ok"}`.
+6. **Point the app at it.**
+   ```bash
+   flutter run --dart-define=API_BASE_URL=https://<your-service>.onrender.com
+   ```
+
+> **Free-tier note:** the service spins down after ~15 min idle, so the first
+> request after a pause takes a few seconds to cold-start. Upgrade the plan in
+> `render.yaml` (`plan: starter`) to keep it always-on.
+

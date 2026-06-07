@@ -1,0 +1,34 @@
+# Render Blueprint for the MileWorth backend.
+# Deploy: push this repo to GitHub, then in Render -> New -> Blueprint, point it
+# at the repo. Render reads this file and provisions the service.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: mileworth-api
+    runtime: node
+    plan: free
+    region: oregon            # change to your nearest region if you like
+    rootDir: backend          # the API lives in /backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health  # Render uses this to know the service is up
+    autoDeploy: true          # redeploy on every push to the connected branch
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      # Secrets — set in the Render dashboard (sync:false keeps them out of git).
+      # MongoDB Atlas connection string, INCLUDING the /mileworth database name.
+      - key: MONGODB_URI
+        sync: false
+      # Render generates a strong random value on first deploy.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 30d
+      - key: DEFAULT_MILEAGE_RATE
+        value: "0.70"
+      - key: DEFAULT_CURRENCY
+        value: USD
+    # PORT is injected by Render automatically; src/config/env.js already reads it.
