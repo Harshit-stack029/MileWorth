@@ -49,9 +49,12 @@ const me = asyncHandler(async (req, res) => {
 const updateSettings = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  const { mileageRate, currency } = req.body;
+  const { mileageRate, currency, classifyWeekendsAsPersonal } = req.body;
   if (mileageRate != null) user.mileageRate = mileageRate;
   if (currency != null) user.currency = currency;
+  if (classifyWeekendsAsPersonal != null) {
+    user.classifyWeekendsAsPersonal = classifyWeekendsAsPersonal;
+  }
   await user.save();
   return res.json({ user: user.toPublicJSON() });
 });

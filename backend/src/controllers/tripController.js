@@ -3,6 +3,7 @@ const Trip = require('../models/Trip');
 const User = require('../models/User');
 const asyncHandler = require('../utils/asyncHandler');
 const { computeDeduction } = require('../utils/deduction');
+const { autoClassify } = require('../utils/autoClassify');
 
 // List the authenticated user's trips, newest first. Optional ?category= filter.
 const listTrips = asyncHandler(async (req, res) => {
@@ -23,7 +24,7 @@ const createTrip = asyncHandler(async (req, res) => {
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const {
-    startTime, endTime, distance, category = 'uncategorized',
+    startTime, endTime, distance, category: requested = 'uncategorized',
     startLat, startLng, endLat, endLng, routePolyline,
     startLocationId, endLocationId,
   } = req.body;
@@ -31,6 +32,13 @@ const createTrip = asyncHandler(async (req, res) => {
   if (startTime == null || endTime == null || distance == null) {
     return res.status(400).json({ error: 'startTime, endTime and distance are required' });
   }
+
+  // Apply auto-classification rules to anything left uncategorized (FR-14).
+  const category = autoClassify({
+    category: requested,
+    startTime,
+    settings: { classifyWeekendsAsPersonal: user.classifyWeekendsAsPersonal },
+  });
 
   const deductionValue = computeDeduction({ distance, category, mileageRate: user.mileageRate });
 
@@ -105,4 +113,67 @@ const getSummary = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { listTrips, getTrip, createTrip, updateTrip, deleteTrip, getSummary };
+// Insights (FR-11): category breakdown for the pie chart + top locations.
+const getInsights = asyncHandler(async (req, res) => {
+  const oid = new mongoose.Types.ObjectId(String(req.user.userId));
+
+  const byCategory = await Trip.aggregate([
+    { $match: { userId: oid } },
+    {
+      $group: {
+        _id: '$category',
+        count: { $sum: 1 },
+        miles: { $sum: '$distance' },
+        value: { $sum: '$deductionValue' },
+      },
+    },
+    { $sort: { count: -1 } },
+  ]);
+
+  // Top end-locations by trip count (only trips that have a named location).
+  const topLocations = await Trip.aggregate([
+    { $match: { userId: oid, endLocationId: { $ne: null } } },
+    {
+      $group: {
+        _id: '$endLocationId',
+        count: { $sum: 1 },
+        value: { $sum: '$deductionValue' },
+      },
+    },
+    { $sort: { count: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: 'locations',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'location',
+      },
+    },
+    { $unwind: '$location' },
+    {
+      $project: {
+        _id: 0,
+        name: '$location.name',
+        count: 1,
+        value: { $round: ['$value', 2] },
+      },
+    },
+  ]);
+
+  res.json({
+    insights: {
+      byCategory: byCategory.map((c) => ({
+        category: c._id,
+        count: c.count,
+        miles: Math.round(c.miles * 100) / 100,
+        value: Math.round(c.value * 100) / 100,
+      })),
+      topLocations,
+    },
+  });
+});
+
+module.exports = {
+  listTrips, getTrip, createTrip, updateTrip, deleteTrip, getSummary, getInsights,
+};

@@ -4,6 +4,7 @@ class AppUser {
   final double mileageRate;
   final String currency;
   final String subscriptionStatus;
+  final bool classifyWeekendsAsPersonal;
 
   AppUser({
     required this.id,
@@ -11,6 +12,7 @@ class AppUser {
     required this.mileageRate,
     required this.currency,
     required this.subscriptionStatus,
+    required this.classifyWeekendsAsPersonal,
   });
 
   bool get isSubscribed => subscriptionStatus == 'active';
@@ -22,6 +24,7 @@ class AppUser {
       mileageRate: (json['mileageRate'] as num).toDouble(),
       currency: json['currency'] as String? ?? 'USD',
       subscriptionStatus: json['subscriptionStatus'] as String? ?? 'free',
+      classifyWeekendsAsPersonal: json['classifyWeekendsAsPersonal'] as bool? ?? false,
     );
   }
 }

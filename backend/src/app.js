@@ -20,6 +20,7 @@ app.use('/trips', require('./routes/trips'));
 app.use('/locations', require('./routes/locations'));
 app.use('/expenses', require('./routes/expenses'));
 app.use('/reports', require('./routes/reports'));
+app.use('/billing', require('./routes/billing'));
 
 app.use(notFound);
 app.use(errorHandler);

@@ -5,6 +5,7 @@ import '../services/trip_tracker.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import 'insights_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -20,6 +21,21 @@ class DashboardScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (state.pendingSync > 0) ...[
+            Card(
+              color: AppColors.personal.withValues(alpha: 0.12),
+              child: ListTile(
+                leading: const Icon(Icons.cloud_off, color: AppColors.personal),
+                title: Text('${state.pendingSync} trip(s) waiting to sync'),
+                subtitle: const Text('Will upload automatically when back online'),
+                trailing: TextButton(
+                  onPressed: state.refresh,
+                  child: const Text('Retry'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           const _GpsStatusBanner(),
           const SizedBox(height: 16),
           // Hero deduction value — the headline number (paywall trigger point).
@@ -79,6 +95,18 @@ class DashboardScreen extends StatelessWidget {
                 onTap: () => DefaultTabController.maybeOf(context),
               ),
             ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.pie_chart_outline, color: AppColors.primary),
+              title: const Text('Insights'),
+              subtitle: const Text('See your drives by category and top locations'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const InsightsScreen()),
+              ),
+            ),
+          ),
         ],
       ),
     );

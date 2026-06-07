@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../services/auto_trip_detector.dart';
 import '../state/app_state.dart';
+import '../theme.dart';
 import '../utils/format.dart';
+import 'paywall_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -21,6 +23,20 @@ class SettingsScreen extends StatelessWidget {
             title: Text(user.email),
             subtitle: Text(user.isSubscribed ? 'Pro subscriber' : 'Free plan'),
           ),
+          if (!user.isSubscribed)
+            Card(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: ListTile(
+                leading: const Icon(Icons.workspace_premium, color: AppColors.primary),
+                title: const Text('Upgrade to Pro'),
+                subtitle: const Text('Unlimited tracking, reports, insights'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                ),
+              ),
+            ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.attach_money),
@@ -33,6 +49,16 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(),
           const _AutoTrackingToggle(),
+          SwitchListTile(
+            secondary: const Icon(Icons.weekend_outlined),
+            title: const Text('Weekends are personal'),
+            subtitle: const Text(
+              'Automatically classify new weekend drives as personal.',
+            ),
+            value: user.classifyWeekendsAsPersonal,
+            onChanged: (v) =>
+                state.updateSettings(classifyWeekendsAsPersonal: v),
+          ),
         ],
         const AboutListTile(
           icon: Icon(Icons.info_outline),

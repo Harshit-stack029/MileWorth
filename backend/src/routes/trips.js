@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(auth);
 
 router.get('/summary', ctrl.getSummary);
+router.get('/insights', ctrl.getInsights);
 router.get('/', ctrl.listTrips);
 router.post('/', ctrl.createTrip);
 router.get('/:id', ctrl.getTrip);

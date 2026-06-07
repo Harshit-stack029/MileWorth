@@ -21,6 +21,8 @@ const userSchema = new mongoose.Schema(
       enum: ['free', 'active', 'cancelled'],
       default: 'free',
     },
+    // Auto-classification rule (FR-14): weekend drives default to personal.
+    classifyWeekendsAsPersonal: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -41,6 +43,7 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     mileageRate: this.mileageRate,
     currency: this.currency,
     subscriptionStatus: this.subscriptionStatus,
+    classifyWeekendsAsPersonal: this.classifyWeekendsAsPersonal,
     createdAt: this.createdAt,
   };
 };

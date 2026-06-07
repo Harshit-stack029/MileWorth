@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import 'paywall_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -58,9 +59,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _export(String format) async {
+    final state = context.read<AppState>();
+    // Paywall at peak perceived value: exporting an accountant-ready report.
+    if (state.user?.isSubscribed != true) {
+      final upgraded = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const PaywallScreen()),
+      );
+      if (upgraded != true) return;
+    }
     setState(() => _exporting = true);
     try {
-      final state = context.read<AppState>();
       final bytes = await state.downloadReport(
         format: format,
         from: _range.start,

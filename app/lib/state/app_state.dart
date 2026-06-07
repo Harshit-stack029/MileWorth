@@ -1,28 +1,33 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/expense.dart';
+import '../models/insights.dart';
 import '../models/summary.dart';
 import '../models/trip.dart';
 import '../models/user.dart';
 import '../services/api_client.dart';
+import '../services/outbox.dart';
 import '../services/storage.dart';
 
 enum AuthStatus { unknown, signedOut, signedIn }
 
 /// Single source of truth for auth + trip data. Backed by [ApiClient].
 class AppState extends ChangeNotifier {
-  AppState({ApiClient? api, TokenStorage? storage})
+  AppState({ApiClient? api, TokenStorage? storage, Outbox? outbox})
       : _api = api ?? ApiClient(),
-        _storage = storage ?? TokenStorage();
+        _storage = storage ?? TokenStorage(),
+        _outbox = outbox ?? Outbox();
 
   final ApiClient _api;
   final TokenStorage _storage;
+  final Outbox _outbox;
 
   AuthStatus status = AuthStatus.unknown;
   AppUser? user;
   List<Trip> trips = [];
   List<Expense> expenses = [];
   TripSummary summary = TripSummary.empty();
+  int pendingSync = 0;
   bool loading = false;
   String? error;
 
@@ -78,14 +83,16 @@ class AppState extends ChangeNotifier {
     trips = [];
     expenses = [];
     summary = TripSummary.empty();
+    pendingSync = 0;
     status = AuthStatus.signedOut;
     notifyListeners();
   }
 
-  /// Reload trips + dashboard summary.
+  /// Reload trips + dashboard summary. Also flushes any offline queue first.
   Future<void> refresh() async {
     _setLoading(true);
     try {
+      await flushOutbox();
       final tripsRes = await _api.get('/trips');
       trips = (tripsRes['trips'] as List)
           .map((j) => Trip.fromJson(j as Map<String, dynamic>))
@@ -100,9 +107,28 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Create a trip. If the device is offline the write is queued and synced
+  /// later (FR-13). Validation/HTTP errors (ApiException) are NOT queued —
+  /// they're surfaced to the caller.
   Future<void> addTrip(Map<String, dynamic> payload) async {
-    await _api.post('/trips', payload);
+    try {
+      await _api.post('/trips', payload);
+    } on ApiException {
+      rethrow;
+    } catch (_) {
+      await _outbox.enqueue('/trips', payload);
+      pendingSync = await _outbox.count();
+      notifyListeners();
+      return;
+    }
     await refresh();
+  }
+
+  /// Push any queued offline writes. Safe to call often; no-op when empty.
+  Future<void> flushOutbox() async {
+    final sent = await _outbox.flush((path, body) => _api.post(path, body));
+    pendingSync = await _outbox.count();
+    if (sent > 0) notifyListeners();
   }
 
   /// Reclassify a trip business <-> personal (FR-3).
@@ -157,10 +183,38 @@ class AppState extends ChangeNotifier {
 
   String _d(DateTime d) => d.toIso8601String().substring(0, 10);
 
-  Future<void> updateSettings({double? mileageRate, String? currency}) async {
+  // --- Insights (Sprint 4) ---
+
+  Future<Insights> fetchInsights() async {
+    final res = await _api.get('/trips/insights');
+    return Insights.fromJson(Map<String, dynamic>.from(res['insights'] as Map));
+  }
+
+  // --- Subscription (Sprint 4) ---
+
+  /// Activate Pro after a Play Billing purchase. In production the backend
+  /// verifies [purchaseToken] with Google before flipping the status.
+  Future<void> verifySubscription({
+    required String purchaseToken,
+    required String productId,
+  }) async {
+    final res = await _api.post('/billing/verify', {
+      'purchaseToken': purchaseToken,
+      'productId': productId,
+    });
+    user = AppUser.fromJson(res['user']);
+    notifyListeners();
+  }
+
+  Future<void> updateSettings({
+    double? mileageRate,
+    String? currency,
+    bool? classifyWeekendsAsPersonal,
+  }) async {
     final res = await _api.patch('/auth/me/settings', {
       'mileageRate': ?mileageRate,
       'currency': ?currency,
+      'classifyWeekendsAsPersonal': ?classifyWeekendsAsPersonal,
     });
     user = AppUser.fromJson(res['user']);
     notifyListeners();
