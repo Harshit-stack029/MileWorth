@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/auto_trip_detector.dart';
 import '../state/app_state.dart';
 import '../utils/format.dart';
 
@@ -30,6 +31,8 @@ class SettingsScreen extends StatelessWidget {
             trailing: const Icon(Icons.edit_outlined),
             onTap: () => _editRate(context, state),
           ),
+          const Divider(),
+          const _AutoTrackingToggle(),
         ],
         const AboutListTile(
           icon: Icon(Icons.info_outline),
@@ -91,5 +94,33 @@ class SettingsScreen extends StatelessWidget {
     if (result != null && result > 0) {
       await state.updateSettings(mileageRate: result);
     }
+  }
+}
+
+/// Switch for fully-automatic background trip detection (FR-1).
+class _AutoTrackingToggle extends StatelessWidget {
+  const _AutoTrackingToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final detector = context.watch<AutoTripDetector>();
+    return SwitchListTile(
+      secondary: const Icon(Icons.gps_fixed),
+      title: const Text('Automatic tracking'),
+      subtitle: const Text(
+        'Detect drives and record mileage in the background. '
+        'Requires "Allow all the time" location.',
+      ),
+      value: detector.enabled,
+      onChanged: (v) async {
+        final messenger = ScaffoldMessenger.of(context);
+        final ok = await detector.setEnabled(v);
+        if (!ok) {
+          messenger.showSnackBar(const SnackBar(
+            content: Text('Location permission is required for auto tracking'),
+          ));
+        }
+      },
+    );
   }
 }

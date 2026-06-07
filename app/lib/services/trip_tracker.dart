@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -43,6 +44,19 @@ class TripTracker extends ChangeNotifier {
         perm == LocationPermission.whileInUse;
   }
 
+  /// Stricter check for background auto-detection: requires "Allow all the
+  /// time". Calling requestPermission again prompts the user to upgrade from
+  /// while-in-use to always on Android.
+  Future<bool> ensureBackgroundPermission() async {
+    if (!await Geolocator.isLocationServiceEnabled()) return false;
+    var perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied ||
+        perm == LocationPermission.whileInUse) {
+      perm = await Geolocator.requestPermission();
+    }
+    return perm == LocationPermission.always;
+  }
+
   Future<bool> start() async {
     if (tracking) return true;
     if (!await ensurePermission()) return false;
@@ -52,14 +66,32 @@ class TripTracker extends ChangeNotifier {
     _startedAt = DateTime.now();
 
     _sub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
+      locationSettings: _recordingSettings(),
     ).listen(_onPosition);
 
     notifyListeners();
     return true;
+  }
+
+  /// High-accuracy recording. On Android we attach a foreground-service
+  /// notification so the OS keeps the GPS stream alive while the app is
+  /// backgrounded (required for "works while the app is closed").
+  LocationSettings _recordingSettings() {
+    if (Platform.isAndroid) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'MileWorth is tracking your drive',
+          notificationText: 'Recording mileage for your tax deductions',
+          enableWakeLock: true,
+        ),
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
+    );
   }
 
   void _onPosition(Position pos) {

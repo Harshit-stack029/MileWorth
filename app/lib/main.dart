@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
+import 'services/auto_trip_detector.dart';
 import 'services/trip_tracker.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
@@ -13,6 +14,14 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()..bootstrap()),
         ChangeNotifierProvider(create: (_) => TripTracker()),
+        // Auto-detector orchestrates the tracker and saves finished drives.
+        ChangeNotifierProxyProvider2<AppState, TripTracker, AutoTripDetector>(
+          create: (ctx) => AutoTripDetector(
+            ctx.read<TripTracker>(),
+            onTripComplete: (payload) => ctx.read<AppState>().addTrip(payload),
+          )..load(),
+          update: (_, _, _, detector) => detector!,
+        ),
       ],
       child: const MileWorthApp(),
     ),
