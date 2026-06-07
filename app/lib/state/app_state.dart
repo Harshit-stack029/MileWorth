@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/expense.dart';
 import '../models/insights.dart';
@@ -29,10 +30,15 @@ class AppState extends ChangeNotifier {
   TripSummary summary = TripSummary.empty();
   int pendingSync = 0;
   bool loading = false;
+  bool onboardingSeen = false;
   String? error;
+
+  static const _onboardingKey = 'onboarding_seen';
 
   /// Called once at startup: restore a saved session if present.
   Future<void> bootstrap() async {
+    final prefs = await SharedPreferences.getInstance();
+    onboardingSeen = prefs.getBool(_onboardingKey) ?? false;
     final token = await _storage.read();
     if (token == null) {
       status = AuthStatus.signedOut;
@@ -68,6 +74,14 @@ class AppState extends ChangeNotifier {
       _setLoading(false);
       rethrow;
     }
+  }
+
+  /// Mark first-run onboarding as completed so it never shows again.
+  Future<void> completeOnboarding() async {
+    onboardingSeen = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingKey, true);
+    notifyListeners();
   }
 
   Future<void> login(String email, String password) =>

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/auto_trip_detector.dart';
 import 'services/subscription_service.dart';
 import 'services/trip_tracker.dart';
@@ -63,7 +64,8 @@ class _AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = context.watch<AppState>().status;
+    final state = context.watch<AppState>();
+    final status = state.status;
     // Once auth is resolved, hand off from the native splash to the UI.
     if (status != AuthStatus.unknown) {
       WidgetsBinding.instance.addPostFrameCallback((_) => FlutterNativeSplash.remove());
@@ -72,7 +74,8 @@ class _AuthGate extends StatelessWidget {
       case AuthStatus.unknown:
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       case AuthStatus.signedOut:
-        return const LoginScreen();
+        // First launch: show onboarding (incl. location priming) before login.
+        return state.onboardingSeen ? const LoginScreen() : const OnboardingScreen();
       case AuthStatus.signedIn:
         return const HomeShell();
     }

@@ -38,8 +38,14 @@ jobs:
       - run: flutter pub get
 
       # Debug APK — always built, handy for quick install / testing.
+      # Points at API_BASE_URL (repo variable) when set, else the default.
       - name: Build debug APK
-        run: flutter build apk --debug
+        run: |
+          if [ -n "$API_BASE_URL" ]; then
+            flutter build apk --debug --dart-define=API_BASE_URL=$API_BASE_URL
+          else
+            flutter build apk --debug
+          fi
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
