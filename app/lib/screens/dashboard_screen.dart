@@ -5,6 +5,7 @@ import '../services/trip_tracker.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import 'home_shell.dart';
 import 'insights_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -92,7 +93,7 @@ class DashboardScreen extends StatelessWidget {
                 title: Text('${s.uncategorizedTrips} trips need classifying'),
                 subtitle: const Text('Tap to review so you don\'t miss a deduction'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => DefaultTabController.maybeOf(context),
+                onTap: () => HomeShell.goToTab(context, 1), // jump to Trips
               ),
             ),
           const SizedBox(height: 12),

@@ -50,7 +50,13 @@ const updateSettings = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
   const { mileageRate, currency, classifyWeekendsAsPersonal } = req.body;
-  if (mileageRate != null) user.mileageRate = mileageRate;
+  if (mileageRate != null) {
+    const rate = Number(mileageRate);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      return res.status(400).json({ error: 'mileageRate must be a positive number' });
+    }
+    user.mileageRate = rate;
+  }
   if (currency != null) user.currency = currency;
   if (classifyWeekendsAsPersonal != null) {
     user.classifyWeekendsAsPersonal = classifyWeekendsAsPersonal;

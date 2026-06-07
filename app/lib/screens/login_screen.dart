@@ -179,6 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
     );
+    controller.dispose();
     if (url != null && url.trim().isNotEmpty) {
       await state.setServerUrl(url);
     }

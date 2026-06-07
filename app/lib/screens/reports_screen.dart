@@ -67,6 +67,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
       if (upgraded != true) return;
     }
+    if (!mounted) return;
     setState(() => _exporting = true);
     try {
       final bytes = await state.downloadReport(

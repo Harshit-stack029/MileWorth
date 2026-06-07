@@ -117,6 +117,7 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
+    controller.dispose();
     if (result != null && result > 0) {
       await state.updateSettings(mileageRate: result);
     }

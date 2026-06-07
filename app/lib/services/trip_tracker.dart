@@ -96,16 +96,21 @@ class TripTracker extends ChangeNotifier {
 
   void _onPosition(Position pos) {
     route.add(pos);
-    if (_last != null) {
+    if (_last == null) {
+      _last = pos;
+    } else {
       final step = Geolocator.distanceBetween(
         _last!.latitude, _last!.longitude, pos.latitude, pos.longitude,
       );
       if (step >= _minStepMeters) {
         distanceMeters += step;
+        _last = pos;
         notifyListeners();
       }
+      // Below the jitter threshold: keep the existing anchor so slow, stop-and-go
+      // movement accumulates toward the threshold instead of being silently
+      // dropped (which undercounted tax mileage on city/slow drives).
     }
-    _last = pos;
 
     final moving = pos.speed >= _movingSpeedMps;
     if (moving) {

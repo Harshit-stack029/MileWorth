@@ -65,6 +65,7 @@ const updateTrip = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findById(req.user.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
   trip.deductionValue = computeDeduction({
     distance: trip.distance,
     category: trip.category,

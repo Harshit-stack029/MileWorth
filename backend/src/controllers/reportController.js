@@ -111,7 +111,10 @@ function round(n) { return Math.round(n * 100) / 100; }
 function iso(d) { return new Date(d).toISOString(); }
 function fmtDate(d) { return new Date(d).toISOString().slice(0, 10); }
 function csvCell(v) {
-  const s = String(v ?? '');
+  let s = String(v ?? '');
+  // Neutralize spreadsheet formula injection: a cell like "=cmd|..." or "+1+1"
+  // executes as a formula when the accountant opens the CSV in Excel/Sheets.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 function fileStamp(from, to) {
