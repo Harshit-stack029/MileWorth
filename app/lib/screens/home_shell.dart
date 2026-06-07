@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../theme.dart';
 import 'add_trip_screen.dart';
 import 'dashboard_screen.dart';
 import 'expenses_screen.dart';
@@ -47,10 +49,33 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  // On the dashboard, show the brand lockup; elsewhere the plain tab title.
+  Widget _titleWidget() {
+    if (_index != 0) return Text(_titles[_index]);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SvgPicture.asset('assets/brand/icon.svg', height: 28),
+        const SizedBox(width: 8),
+        Text.rich(
+          TextSpan(children: const [
+            TextSpan(text: 'Mile'),
+            TextSpan(text: 'Worth', style: TextStyle(color: AppColors.green)),
+          ]),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: AppColors.navyDeep,
+            fontSize: 20,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_index])),
+      appBar: AppBar(title: _titleWidget()),
       body: _pages[_index],
       floatingActionButton: _fab(),
       bottomNavigationBar: NavigationBar(
