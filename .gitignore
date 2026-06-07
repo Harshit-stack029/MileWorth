@@ -4,6 +4,11 @@ node_modules/
 .env
 .env.local
 
+# Android signing — never commit keystores or signing config
+app/android/key.properties
+*.jks
+*.keystore
+
 # Flutter / Dart
 app/.dart_tool/
 app/.flutter-plugins

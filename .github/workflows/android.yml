@@ -1,0 +1,81 @@
+name: Android build
+
+# Manual runs (Actions tab -> Run workflow) and version tags like v1.0.0.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    name: Build APK + AAB
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      # Secrets are mapped to env so steps can gate on their presence.
+      KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      # API the released build points at. Set as a repo variable.
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Debug APK — always built, handy for quick install / testing.
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mileworth-debug-apk
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+
+      # ---- Release AAB (only when signing secrets are configured) ----
+      - name: Restore keystore + key.properties
+        if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          printf '%s' "$KEY_PROPERTIES" > android/key.properties
+
+      - name: Build release AAB
+        if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
+        run: |
+          if [ -n "$API_BASE_URL" ]; then
+            flutter build appbundle --release --dart-define=API_BASE_URL=$API_BASE_URL
+          else
+            flutter build appbundle --release
+          fi
+
+      - name: Upload release AAB
+        if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: mileworth-release-aab
+          path: app/build/app/outputs/bundle/release/app-release.aab
+
+      # ---- Optional: push the debug APK to Firebase App Distribution ----
+      - name: Distribute to Firebase testers
+        if: env.FIREBASE_APP_ID != '' && env.FIREBASE_SERVICE_ACCOUNT != ''
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ env.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          groups: testers
+          file: app/build/app/outputs/flutter-apk/app-debug.apk

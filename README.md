@@ -65,3 +65,35 @@ as a free Render web service.
 > request after a pause takes a few seconds to cold-start. Upgrade the plan in
 > `render.yaml` (`plan: starter`) to keep it always-on.
 
+## CI / cloud builds (GitHub Actions)
+
+Two workflows live in `.github/workflows/`:
+
+- **`ci.yml`** — runs on every push/PR to `main`: backend `npm test` and
+  Flutter `analyze` + `test`. No secrets needed.
+- **`android.yml`** — manual (Actions → Run workflow) or on a `v*` tag. Builds a
+  debug APK artifact always; builds a **signed release AAB** and pushes to
+  **Firebase App Distribution** when the secrets below are set. Building in the
+  cloud keeps release builds off your Intel Mac (requirements §11).
+
+### One-time setup for signed release builds
+
+1. **Generate an upload keystore** (once, keep it safe — losing it means you
+   can't update the app):
+   ```bash
+   keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 \
+     -validity 10000 -alias upload
+   ```
+2. **Add repo secrets** (GitHub → Settings → Secrets and variables → Actions):
+   | Secret | Value |
+   |--------|-------|
+   | `ANDROID_KEYSTORE_BASE64` | `base64 -i upload-keystore.jks` output |
+   | `ANDROID_KEY_PROPERTIES` | contents of your `android/key.properties` (see `key.properties.example`) |
+   | `FIREBASE_APP_ID` | Firebase Android app ID (optional, for distribution) |
+   | `FIREBASE_SERVICE_ACCOUNT` | Firebase service-account JSON (optional) |
+3. **Add a repo variable** `API_BASE_URL` = your Render URL, so release builds
+   point at production.
+
+Local release signing: copy `key.properties.example` → `android/key.properties`,
+put your `.jks` at `android/app/upload-keystore.jks`. Both are gitignored.
+

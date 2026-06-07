@@ -1,0 +1,7 @@
+# Copy to android/key.properties for local release signing (gitignored).
+# In CI this file is created from the ANDROID_KEY_PROPERTIES secret.
+# storeFile is resolved relative to the android/app directory.
+storeFile=upload-keystore.jks
+storePassword=your-store-password
+keyAlias=upload
+keyPassword=your-key-password
