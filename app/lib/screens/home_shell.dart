@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'add_trip_screen.dart';
 import 'dashboard_screen.dart';
+import 'expenses_screen.dart';
+import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'trips_screen.dart';
 
@@ -15,29 +17,50 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  static const _titles = ['Dashboard', 'Trips', 'Settings'];
-  static const _pages = [DashboardScreen(), TripsScreen(), SettingsScreen()];
+  static const _titles = ['Dashboard', 'Trips', 'Expenses', 'Reports', 'Settings'];
+  static const _pages = [
+    DashboardScreen(),
+    TripsScreen(),
+    ExpensesScreen(),
+    ReportsScreen(),
+    SettingsScreen(),
+  ];
+
+  Widget? _fab() {
+    switch (_index) {
+      case 1: // Trips
+        return FloatingActionButton.extended(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AddTripScreen()),
+          ),
+          icon: const Icon(Icons.add),
+          label: const Text('Add trip'),
+        );
+      case 2: // Expenses
+        return FloatingActionButton.extended(
+          onPressed: () => openAddExpense(context),
+          icon: const Icon(Icons.add),
+          label: const Text('Add expense'),
+        );
+      default:
+        return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_titles[_index])),
       body: _pages[_index],
-      floatingActionButton: _index == 1
-          ? FloatingActionButton.extended(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddTripScreen()),
-              ),
-              icon: const Icon(Icons.add),
-              label: const Text('Add trip'),
-            )
-          : null,
+      floatingActionButton: _fab(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.list_alt_outlined), selectedIcon: Icon(Icons.list_alt), label: 'Trips'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Expenses'),
+          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Reports'),
           NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),

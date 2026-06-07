@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/expense.dart';
 import '../models/summary.dart';
 import '../models/trip.dart';
 import '../models/user.dart';
@@ -20,6 +21,7 @@ class AppState extends ChangeNotifier {
   AuthStatus status = AuthStatus.unknown;
   AppUser? user;
   List<Trip> trips = [];
+  List<Expense> expenses = [];
   TripSummary summary = TripSummary.empty();
   bool loading = false;
   String? error;
@@ -74,6 +76,7 @@ class AppState extends ChangeNotifier {
     _api.setToken(null);
     user = null;
     trips = [];
+    expenses = [];
     summary = TripSummary.empty();
     status = AuthStatus.signedOut;
     notifyListeners();
@@ -112,6 +115,47 @@ class AppState extends ChangeNotifier {
     await _api.delete('/trips/${trip.id}');
     await refresh();
   }
+
+  // --- Expenses (Sprint 3) ---
+
+  Future<void> fetchExpenses() async {
+    final res = await _api.get('/expenses');
+    expenses = (res['expenses'] as List)
+        .map((j) => Expense.fromJson(j as Map<String, dynamic>))
+        .toList();
+    notifyListeners();
+  }
+
+  Future<void> addExpense(Map<String, dynamic> payload) async {
+    await _api.post('/expenses', payload);
+    await fetchExpenses();
+  }
+
+  Future<void> deleteExpense(Expense expense) async {
+    await _api.delete('/expenses/${expense.id}');
+    await fetchExpenses();
+  }
+
+  // --- Reports (Sprint 3) ---
+
+  /// Totals for a date range, shown before exporting.
+  Future<Map<String, dynamic>> reportSummary(DateTime from, DateTime to) async {
+    final res = await _api.get(
+      '/reports/summary?from=${_d(from)}&to=${_d(to)}',
+    );
+    return Map<String, dynamic>.from(res['summary'] as Map);
+  }
+
+  /// Download a generated report. format = 'pdf' | 'csv'.
+  Future<Uint8List> downloadReport({
+    required String format,
+    required DateTime from,
+    required DateTime to,
+  }) {
+    return _api.getBytes('/reports?format=$format&from=${_d(from)}&to=${_d(to)}');
+  }
+
+  String _d(DateTime d) => d.toIso8601String().substring(0, 10);
 
   Future<void> updateSettings({double? mileageRate, String? currency}) async {
     final res = await _api.patch('/auth/me/settings', {

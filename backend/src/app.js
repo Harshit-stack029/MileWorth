@@ -18,6 +18,8 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'mileworth-ap
 app.use('/auth', require('./routes/auth'));
 app.use('/trips', require('./routes/trips'));
 app.use('/locations', require('./routes/locations'));
+app.use('/expenses', require('./routes/expenses'));
+app.use('/reports', require('./routes/reports'));
 
 app.use(notFound);
 app.use(errorHandler);

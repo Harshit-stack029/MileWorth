@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
@@ -43,6 +44,13 @@ class ApiClient {
   Future<void> delete(String path) async {
     final res = await http.delete(_uri(path), headers: _headers);
     if (res.statusCode >= 400) _throw(res);
+  }
+
+  /// Download raw bytes (e.g. a generated PDF/CSV report) with auth.
+  Future<Uint8List> getBytes(String path) async {
+    final res = await http.get(_uri(path), headers: _headers);
+    if (res.statusCode >= 400) _throw(res);
+    return res.bodyBytes;
   }
 
   dynamic _decode(http.Response res) {

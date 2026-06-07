@@ -47,6 +47,10 @@ dependencies:
   # GPS location + distance (Sprint 2 auto-tracking). Re-exports AndroidSettings /
   # ForegroundNotificationConfig used for background foreground-service GPS.
   geolocator: ^13.0.1
+  # Sprint 3: receipt capture, report sharing, temp file paths
+  image_picker: ^1.1.2
+  share_plus: ^10.1.2
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:
