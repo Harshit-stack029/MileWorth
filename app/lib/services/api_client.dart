@@ -16,15 +16,26 @@ class ApiException implements Exception {
 /// decodes JSON, raising [ApiException] on non-2xx responses.
 class ApiClient {
   String? _token;
+  // Defaults to the compile-time value; can be overridden at runtime (e.g. to
+  // point a test build at a LAN backend or your Render URL) via setBaseUrl.
+  String baseUrl = ApiConfig.baseUrl;
 
   void setToken(String? token) => _token = token;
+
+  void setBaseUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isNotEmpty) {
+      // Drop any trailing slash so path concatenation stays clean.
+      baseUrl = trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    }
+  }
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
-  Uri _uri(String path) => Uri.parse('${ApiConfig.baseUrl}$path');
+  Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
   Future<dynamic> get(String path) async {
     final res = await http.get(_uri(path), headers: _headers);

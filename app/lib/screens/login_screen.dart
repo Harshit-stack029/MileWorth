@@ -125,6 +125,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? 'Have an account? Sign in'
                           : 'New here? Create an account'),
                     ),
+                    const SizedBox(height: 24),
+                    TextButton.icon(
+                      onPressed: _busy ? null : _editServerUrl,
+                      icon: const Icon(Icons.dns_outlined, size: 16),
+                      label: Text('Server: ${context.watch<AppState>().serverUrl}',
+                          style: const TextStyle(fontSize: 12)),
+                    ),
                   ],
                 ),
               ),
@@ -133,5 +140,47 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _editServerUrl() async {
+    final state = context.read<AppState>();
+    final controller = TextEditingController(text: state.serverUrl);
+    final url = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Backend server URL'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Point the app at your backend. For a backend running on your '
+              'computer, use http://<your-computer-IP>:4000 with the phone on '
+              'the same Wi-Fi.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'https://your-api.onrender.com',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (url != null && url.trim().isNotEmpty) {
+      await state.setServerUrl(url);
+    }
   }
 }

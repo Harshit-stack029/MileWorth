@@ -34,11 +34,25 @@ class AppState extends ChangeNotifier {
   String? error;
 
   static const _onboardingKey = 'onboarding_seen';
+  static const _serverUrlKey = 'server_url';
+
+  /// The backend URL currently in use (compile-time default unless overridden).
+  String get serverUrl => _api.baseUrl;
+
+  /// Override the backend URL at runtime (for test builds / switching servers).
+  Future<void> setServerUrl(String url) async {
+    _api.setBaseUrl(url);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_serverUrlKey, _api.baseUrl);
+    notifyListeners();
+  }
 
   /// Called once at startup: restore a saved session if present.
   Future<void> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     onboardingSeen = prefs.getBool(_onboardingKey) ?? false;
+    final savedUrl = prefs.getString(_serverUrlKey);
+    if (savedUrl != null && savedUrl.isNotEmpty) _api.setBaseUrl(savedUrl);
     final token = await _storage.read();
     if (token == null) {
       status = AuthStatus.signedOut;
