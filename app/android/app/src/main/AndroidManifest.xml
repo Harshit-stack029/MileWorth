@@ -1,4 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Location permissions (Sprint 2 auto-tracking).
+         ACCESS_BACKGROUND_LOCATION must be requested separately AND justified in
+         the Play data-safety form — it is the #1 rejection cause for this app
+         type. Request "Allow all the time" only after explaining why. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <!-- Activity recognition lets us wake GPS only when the user is driving,
+         instead of polling constantly (battery is the #1 bad-review cause). -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+
     <application
         android:label="mileworth"
         android:name="${applicationName}"

@@ -44,6 +44,8 @@ dependencies:
   shared_preferences: ^2.3.2
   # Number / currency / date formatting
   intl: ^0.19.0
+  # GPS location + distance (Sprint 2 auto-tracking)
+  geolocator: ^13.0.1
 
 dev_dependencies:
   flutter_test:

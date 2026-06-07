@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/trip_tracker.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
@@ -121,28 +122,61 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Placeholder for the "GPS Tracking Enabled" indicator. Wired to real
-/// background tracking in Sprint 2.
+/// Live "GPS Tracking" control. Foreground manual start/stop is wired now;
+/// automatic background detection is the remaining Sprint 2 work.
 class _GpsStatusBanner extends StatelessWidget {
   const _GpsStatusBanner();
 
   @override
   Widget build(BuildContext context) {
+    final tracker = context.watch<TripTracker>();
+    final active = tracker.tracking;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: active
+            ? AppColors.business.withValues(alpha: 0.12)
+            : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(Icons.gps_off, color: Colors.grey.shade500, size: 20),
+          Icon(active ? Icons.gps_fixed : Icons.gps_off,
+              color: active ? AppColors.business : Colors.grey.shade500, size: 20),
           const SizedBox(width: 8),
-          const Expanded(
-            child: Text('Auto GPS tracking — coming in the next update'),
+          Expanded(
+            child: Text(active
+                ? 'Tracking · ${formatMiles(tracker.distanceMiles)}'
+                : 'GPS tracking off'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => _toggle(context, tracker),
+            child: Text(active ? 'Stop' : 'Start'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _toggle(BuildContext context, TripTracker tracker) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final appState = context.read<AppState>();
+    if (tracker.tracking) {
+      final payload = tracker.stop();
+      if (payload == null) {
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Drive too short to save')));
+        return;
+      }
+      await appState.addTrip(payload);
+      messenger.showSnackBar(const SnackBar(content: Text('Trip saved')));
+    } else {
+      final ok = await tracker.start();
+      if (!ok) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Location permission needed to track drives')));
+      }
+    }
   }
 }

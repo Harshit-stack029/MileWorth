@@ -3,13 +3,17 @@ import 'package:provider/provider.dart';
 
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
+import 'services/trip_tracker.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState()..bootstrap(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState()..bootstrap()),
+        ChangeNotifierProvider(create: (_) => TripTracker()),
+      ],
       child: const MileWorthApp(),
     ),
   );
