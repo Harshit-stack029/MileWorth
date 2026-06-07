@@ -1,0 +1,20 @@
+# Node
+node_modules/
+*.log
+.env
+.env.local
+
+# Flutter / Dart
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.idea/
+app/*.iml
+app/.packages
+app/pubspec.lock
+
+# OS / editor
+.DS_Store
+.vscode/
+*.swp
