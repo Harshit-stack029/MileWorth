@@ -53,6 +53,8 @@ dependencies:
   path_provider: ^2.1.4
   # Sprint 4: Google Play / App Store subscription billing
   in_app_purchase: ^3.2.0
+  # Render brand SVG logo in-app
+  flutter_svg: ^2.0.10+1
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +66,18 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  # Generates launcher icons from the brand mark
+  flutter_launcher_icons: ^0.14.1
+
+# Launcher icon generation: run `dart run flutter_launcher_icons`
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/brand/icon-1024.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0C2640"
+  adaptive_icon_foreground: "assets/brand/icon-foreground-1024.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -75,6 +89,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/brand/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

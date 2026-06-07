@@ -1,0 +1,31 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#15426F"/>
+      <stop offset="1" stop-color="#0C2640"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1FD27E"/>
+      <stop offset="1" stop-color="#0FA15D"/>
+    </linearGradient>
+    <radialGradient id="hl" cx="0.25" cy="0.2" r="0.8">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#navy)"/>
+  <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#hl)"/>
+  <!-- route -->
+  <path d="M150 380 C 214 336, 252 326, 270 274 S 300 196, 330 172"
+        fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="24"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- milestone dot -->
+  <circle cx="270" cy="276" r="11" fill="#0C2640" stroke="#FFFFFF" stroke-width="7"/>
+  <!-- start node -->
+  <circle cx="150" cy="380" r="17" fill="#0C2640" stroke="#FFFFFF" stroke-width="8"/>
+  <!-- value coin -->
+  <circle cx="338" cy="158" r="66" fill="url(#green)"/>
+  <circle cx="338" cy="158" r="66" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="3"/>
+  <text x="338" y="184" text-anchor="middle" font-family="-apple-system,Segoe UI,Roboto,sans-serif"
+        font-weight="800" font-size="74" fill="#FFFFFF">$</text>
+</svg>

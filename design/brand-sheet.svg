@@ -1,0 +1,90 @@
+<svg viewBox="0 0 1200 820" xmlns="http://www.w3.org/2000/svg" font-family="'Bricolage Grotesque','Plus Jakarta Sans',-apple-system,Segoe UI,sans-serif">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Plus+Jakarta+Sans:wght@500;700&amp;display=swap');
+      .display { font-family:'Bricolage Grotesque','Plus Jakarta Sans',sans-serif; }
+      .body { font-family:'Plus Jakarta Sans',sans-serif; }
+    </style>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#15426F"/>
+      <stop offset="1" stop-color="#0C2640"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1FD27E"/>
+      <stop offset="1" stop-color="#0FA15D"/>
+    </linearGradient>
+    <radialGradient id="hl" cx="0.25" cy="0.2" r="0.8">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#0C2640" flood-opacity="0.28"/>
+    </filter>
+    <filter id="coinShadow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#063b22" flood-opacity="0.45"/>
+    </filter>
+
+    <!-- Reusable icon mark -->
+    <g id="mark">
+      <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#navy)"/>
+      <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#hl)"/>
+      <!-- route -->
+      <path d="M150 380 C 214 336, 252 326, 270 274 S 300 196, 330 172"
+            fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="24"
+            stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M150 380 C 214 336, 252 326, 270 274 S 300 196, 330 172"
+            fill="none" stroke="#1FD27E" stroke-opacity="0.0" stroke-width="24"/>
+      <!-- milestone dots -->
+      <circle cx="270" cy="276" r="11" fill="#0C2640" stroke="#FFFFFF" stroke-width="7"/>
+      <!-- start node -->
+      <circle cx="150" cy="380" r="17" fill="#0C2640" stroke="#FFFFFF" stroke-width="8"/>
+      <!-- value coin -->
+      <circle cx="338" cy="158" r="66" fill="url(#green)" filter="url(#coinShadow)"/>
+      <circle cx="338" cy="158" r="66" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="3"/>
+      <text x="338" y="183" text-anchor="middle" class="display" font-weight="800"
+            font-size="74" fill="#FFFFFF">$</text>
+    </g>
+  </defs>
+
+  <!-- board -->
+  <rect width="1200" height="820" fill="#F6F4EE"/>
+  <text x="64" y="74" class="body" font-size="15" letter-spacing="3" fill="#8A93A0">MILEWORTH — BRAND SHEET</text>
+
+  <!-- primary lockup -->
+  <g transform="translate(64,150)">
+    <g transform="translate(0,0) scale(0.36)" filter="url(#soft)"><use href="#mark"/></g>
+    <text x="218" y="92" class="display" font-weight="800" font-size="78" fill="#0C2640">Mile<tspan fill="#0FA15D">Worth</tspan></text>
+    <text x="222" y="138" class="body" font-weight="700" font-size="19" letter-spacing="5" fill="#8A93A0">TURN MILES INTO CASH</text>
+  </g>
+
+  <!-- divider -->
+  <line x1="64" y1="360" x2="1136" y2="360" stroke="#E2DED3" stroke-width="2"/>
+
+  <!-- app icon -->
+  <g transform="translate(64,410)">
+    <text x="0" y="0" class="body" font-size="14" letter-spacing="2" fill="#8A93A0">APP ICON</text>
+    <g transform="translate(0,24) scale(0.42)" filter="url(#soft)"><use href="#mark"/></g>
+  </g>
+
+  <!-- dark / reversed variant -->
+  <g transform="translate(380,410)">
+    <text x="0" y="0" class="body" font-size="14" letter-spacing="2" fill="#8A93A0">REVERSED</text>
+    <rect x="0" y="24" width="420" height="232" rx="28" fill="#0C2640"/>
+    <g transform="translate(36,78) scale(0.24)"><use href="#mark"/></g>
+    <text x="172" y="150" class="display" font-weight="800" font-size="46" fill="#FFFFFF">Mile<tspan fill="#1FD27E">Worth</tspan></text>
+    <text x="174" y="180" class="body" font-weight="700" font-size="12" letter-spacing="4" fill="#7FA0BE">TURN MILES INTO CASH</text>
+  </g>
+
+  <!-- palette -->
+  <g transform="translate(860,410)">
+    <text x="0" y="0" class="body" font-size="14" letter-spacing="2" fill="#8A93A0">PALETTE</text>
+    <g transform="translate(0,24)">
+      <rect x="0" y="0" width="120" height="120" rx="20" fill="#0C2640"/>
+      <rect x="0" y="132" width="120" height="60" rx="14" fill="#15426F"/>
+      <rect x="138" y="0" width="120" height="120" rx="20" fill="#0FA15D"/>
+      <rect x="138" y="132" width="120" height="60" rx="14" fill="#1FD27E"/>
+      <text x="0" y="226" class="body" font-size="13" fill="#5A6675">#0C2640 · #0FA15D</text>
+      <text x="0" y="246" class="body" font-size="13" fill="#5A6675">#15426F · #1FD27E</text>
+    </g>
+  </g>
+</svg>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
@@ -60,15 +61,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.directions_car_filled,
-                        size: 64, color: AppColors.primary),
-                    const SizedBox(height: 12),
-                    Text('MileWorth',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    SvgPicture.asset('assets/brand/icon.svg', height: 84),
+                    const SizedBox(height: 16),
+                    Text.rich(
+                      TextSpan(children: const [
+                        TextSpan(text: 'Mile'),
+                        TextSpan(text: 'Worth', style: TextStyle(color: AppColors.green)),
+                      ]),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.navyDeep,
+                          ),
+                    ),
                     const SizedBox(height: 4),
                     Text('Turn your miles into cash.',
                         textAlign: TextAlign.center,

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MileWorth — Interface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0C2640; --navy:#15426F; --green:#0FA15D; --green-l:#1FD27E;
+    --paper:#F6F4EE; --card:#FFFFFF; --muted:#8A93A0; --line:#ECE8DD; --amber:#F4B740;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Plus Jakarta Sans',sans-serif; color:var(--ink);
+    background:
+      radial-gradient(900px 600px at 15% -10%, #18406b 0%, transparent 60%),
+      radial-gradient(900px 600px at 110% 10%, #0c2640 0%, transparent 55%),
+      #08203a;
+    min-height:100vh; padding:56px 24px 80px;
+  }
+  .display{font-family:'Bricolage Grotesque',sans-serif}
+  header{max-width:1280px;margin:0 auto 48px;color:#fff}
+  header h1{font-family:'Bricolage Grotesque';font-weight:800;font-size:42px;letter-spacing:-.5px}
+  header h1 span{color:var(--green-l)}
+  header p{color:#9fb6cf;margin-top:8px;font-weight:500;letter-spacing:.5px}
+  .grid{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;gap:40px;justify-content:center}
+  .phonewrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .label{color:#bcd0e6;font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
+  .phone{
+    width:300px;height:620px;background:var(--paper);border-radius:42px;
+    border:11px solid #0a1c30;box-shadow:0 30px 60px rgba(0,0,0,.45), inset 0 0 0 2px #1c3a5a;
+    position:relative;overflow:hidden;
+  }
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#0a1c30;border-radius:0 0 18px 18px;z-index:30}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:14px 22px 4px;font-size:12px;font-weight:700;color:var(--ink)}
+  .screen{height:100%;overflow:hidden;display:flex;flex-direction:column}
+  .scroll{flex:1;overflow:hidden;padding:0 18px}
+  /* nav */
+  .nav{display:flex;justify-content:space-around;align-items:center;padding:12px 8px 22px;background:#fff;border-top:1px solid var(--line)}
+  .nav div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--muted)}
+  .nav .on{color:var(--green)}
+  .dot{width:22px;height:22px;border-radius:7px;background:#dfe4ea}
+  .nav .on .dot{background:var(--green)}
+  /* dashboard */
+  .greet{padding:8px 4px 0}
+  .greet small{color:var(--muted);font-weight:600;font-size:12px}
+  .greet h2{font-family:'Bricolage Grotesque';font-weight:700;font-size:20px;margin-top:2px}
+  .hero{margin:14px 0;background:linear-gradient(135deg,var(--navy),var(--ink));border-radius:24px;padding:20px;color:#fff;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(31,210,126,.18)}
+  .hero .tag{font-size:11px;letter-spacing:1.5px;color:#9fb6cf;font-weight:700}
+  .hero .big{font-family:'Bricolage Grotesque';font-weight:800;font-size:40px;margin-top:6px;letter-spacing:-1px}
+  .hero .sub{color:#1FD27E;font-weight:700;font-size:13px;margin-top:4px}
+  .stats{display:flex;gap:12px}
+  .stat{flex:1;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px}
+  .stat .n{font-family:'Bricolage Grotesque';font-weight:800;font-size:22px}
+  .stat .l{color:var(--muted);font-size:11px;font-weight:600;margin-top:2px}
+  .sec{display:flex;justify-content:space-between;align-items:center;margin:18px 4px 10px}
+  .sec h3{font-size:13px;font-weight:700}
+  .sec a{font-size:11px;color:var(--green);font-weight:700}
+  /* trip card */
+  .trip{background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px;display:flex;gap:12px;align-items:center;margin-bottom:10px}
+  .map{width:64px;height:64px;border-radius:14px;overflow:hidden;flex:none;background:#eef1f4}
+  .trip .info{flex:1;min-width:0}
+  .trip .info .mi{font-family:'Bricolage Grotesque';font-weight:700;font-size:15px}
+  .trip .info .ro{color:var(--muted);font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .trip .right{text-align:right;flex:none}
+  .val{color:var(--green);font-weight:800;font-size:14px}
+  .badge{display:inline-block;margin-top:4px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.5px}
+  .b-biz{background:#e7f0fb;color:var(--navy)}
+  .b-per{background:#fff3da;color:#9a6b00}
+  /* detail */
+  .bigmap{height:230px;border-radius:0 0 26px 26px;overflow:hidden;margin:0 -18px}
+  .back{position:absolute;top:54px;left:24px;z-index:20;width:34px;height:34px;border-radius:11px;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--ink);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  .dcard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:14px}
+  .drow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .drow:last-child{border:0}
+  .drow span:first-child{color:var(--muted);font-weight:500}
+  .drow span:last-child{font-weight:700}
+  .toggle{display:flex;background:#eef1f4;border-radius:14px;padding:4px;margin-top:14px}
+  .toggle div{flex:1;text-align:center;padding:10px;border-radius:11px;font-size:12px;font-weight:700;color:var(--muted)}
+  .toggle .act{background:var(--navy);color:#fff;box-shadow:0 4px 10px rgba(21,66,111,.35)}
+  /* report */
+  .report{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:6px}
+  .report h4{font-family:'Bricolage Grotesque';font-weight:800;font-size:18px}
+  .report .rng{color:var(--muted);font-size:11px;font-weight:600;margin:2px 0 12px}
+  .ln{display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .ln span:last-child{font-weight:700}
+  .total{display:flex;justify-content:space-between;margin-top:10px;font-family:'Bricolage Grotesque';font-weight:800;font-size:18px}
+  .total span:last-child{color:var(--green)}
+  .btns{display:flex;gap:10px;margin-top:16px}
+  .btn{flex:1;text-align:center;padding:13px;border-radius:14px;font-weight:700;font-size:12px}
+  .btn-p{background:var(--green);color:#fff;box-shadow:0 8px 18px rgba(15,161,93,.35)}
+  .btn-s{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .legend{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .leg{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600}
+  .sw{width:11px;height:11px;border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mile<span>Worth</span> — Interface</h1>
+  <p>Phase&nbsp;1 core screens · automatic tracking, classification, deductions &amp; reports</p>
+</header>
+
+<div class="grid">
+
+  <!-- DASHBOARD -->
+  <div class="phonewrap">
+    <div class="label">Dashboard</div>
+    <div class="phone"><div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ▮▮▮ ⚡</span></div>
+        <div class="scroll">
+          <div class="greet"><small>Good morning</small><h2>Your miles are working 💪</h2></div>
+          <div class="hero">
+            <div class="tag">TAX DEDUCTIONS · 2026</div>
+            <div class="big">$10,489</div>
+            <div class="sub">+$689 this week</div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="n">15,201</div><div class="l">Miles tracked</div></div>
+            <div class="stat"><div class="n">228</div><div class="l">Work drives</div></div>
+          </div>
+          <div class="sec"><h3>Recent drives</h3><a>See all</a></div>
+          <div class="trip">
+            <div class="map">
+              <svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#eaf0f6"/><path d="M10 50 Q28 40 34 26 T54 12" stroke="#15426F" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="10" cy="50" r="4" fill="#15426F"/><circle cx="54" cy="12" r="5" fill="#0FA15D"/></svg>
+            </div>
+            <div class="info"><div class="mi">102.8 mi</div><div class="ro">Home → Job Site #2</div></div>
+            <div class="right"><div class="val">$69.36</div><span class="badge b-biz">BUSINESS</span></div>
+          </div>
+          <div class="trip">
+            <div class="map">
+              <svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#eaf0f6"/><path d="M12 16 Q24 30 36 34 T54 52" stroke="#15426F" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="12" cy="16" r="4" fill="#15426F"/><circle cx="54" cy="52" r="5" fill="#F4B740"/></svg>
+            </div>
+            <div class="info"><div class="mi">12.1 mi</div><div class="ro">Grocery Store → Home</div></div>
+            <div class="right"><div class="val">$8.42</div><span class="badge b-per">PERSONAL</span></div>
+          </div>
+        </div>
+        <div class="nav">
+          <div class="on"><div class="dot"></div>Home</div>
+          <div><div class="dot"></div>Drives</div>
+          <div><div class="dot"></div>Reports</div>
+          <div><div class="dot"></div>Settings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRIPS LIST -->
+  <div class="phonewrap">
+    <div class="label">Drives</div>
+    <div class="phone"><div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ▮▮▮ ⚡</span></div>
+        <div class="scroll">
+          <div class="greet" style="display:flex;justify-content:space-between;align-items:center">
+            <h2 style="font-size:22px">Drives</h2>
+            <span style="font-size:11px;font-weight:700;color:var(--green);background:#e7f8ee;padding:6px 10px;border-radius:20px">● Tracking on</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;margin:14px 4px 8px">TODAY · 3 uncategorized</div>
+          <div class="trip">
+            <div class="map"><svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#eaf0f6"/><path d="M10 52 Q30 44 36 24 T56 14" stroke="#15426F" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="10" cy="52" r="4" fill="#15426F"/><circle cx="56" cy="14" r="5" fill="#0FA15D"/></svg></div>
+            <div class="info"><div class="mi">102.8 mi</div><div class="ro">5:12 → 5:38 AM</div></div>
+            <div class="right"><div class="val">$69.36</div><span class="badge b-biz">BUSINESS</span></div>
+          </div>
+          <div class="trip" style="outline:2px dashed #d7c39a">
+            <div class="map"><svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#eaf0f6"/><path d="M12 20 Q30 28 34 40 T54 50" stroke="#15426F" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="12" cy="20" r="4" fill="#15426F"/><circle cx="54" cy="50" r="5" fill="#8A93A0"/></svg></div>
+            <div class="info"><div class="mi">8.4 mi</div><div class="ro">Swipe to classify →</div></div>
+            <div class="right"><div class="val" style="color:var(--muted)">$5.67</div><span class="badge" style="background:#eef1f4;color:#8A93A0">UNSORTED</span></div>
+          </div>
+          <div class="trip">
+            <div class="map"><svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#eaf0f6"/><path d="M12 14 Q26 30 38 32 T54 54" stroke="#15426F" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="12" cy="14" r="4" fill="#15426F"/><circle cx="54" cy="54" r="5" fill="#F4B740"/></svg></div>
+            <div class="info"><div class="mi">12.1 mi</div><div class="ro">Grocery Store → Home</div></div>
+            <div class="right"><div class="val">$8.42</div><span class="badge b-per">PERSONAL</span></div>
+          </div>
+          <div class="trip">
+            <div class="map"><svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#eaf0f6"/><path d="M10 48 Q30 38 34 22 T56 12" stroke="#15426F" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="10" cy="48" r="4" fill="#15426F"/><circle cx="56" cy="12" r="5" fill="#0FA15D"/></svg></div>
+            <div class="info"><div class="mi">41.0 mi</div><div class="ro">Office → Home Depot</div></div>
+            <div class="right"><div class="val">$27.67</div><span class="badge b-biz">BUSINESS</span></div>
+          </div>
+        </div>
+        <div class="nav">
+          <div><div class="dot"></div>Home</div>
+          <div class="on"><div class="dot"></div>Drives</div>
+          <div><div class="dot"></div>Reports</div>
+          <div><div class="dot"></div>Settings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRIP DETAIL -->
+  <div class="phonewrap">
+    <div class="label">Drive detail</div>
+    <div class="phone"><div class="notch"></div>
+      <div class="back">‹</div>
+      <div class="screen">
+        <div class="bigmap">
+          <svg width="100%" height="100%" viewBox="0 0 280 230" preserveAspectRatio="xMidYMid slice">
+            <rect width="280" height="230" fill="#e7edf3"/>
+            <g stroke="#d5dde6" stroke-width="2"><path d="M0 60 H280"/><path d="M0 150 H280"/><path d="M90 0 V230"/><path d="M200 0 V230"/></g>
+            <path d="M40 200 Q90 150 110 110 T180 60 T240 30" fill="none" stroke="#15426F" stroke-width="6" stroke-linecap="round"/>
+            <circle cx="40" cy="200" r="9" fill="#fff" stroke="#15426F" stroke-width="5"/>
+            <circle cx="240" cy="30" r="11" fill="#0FA15D" stroke="#fff" stroke-width="4"/>
+          </svg>
+        </div>
+        <div class="scroll" style="margin-top:-4px">
+          <div class="dcard">
+            <div class="drow"><span>Distance</span><span>102.8 mi</span></div>
+            <div class="drow"><span>Time</span><span>5:12 – 5:38 AM</span></div>
+            <div class="drow"><span>From</span><span>Home</span></div>
+            <div class="drow"><span>To</span><span>Job Site #2</span></div>
+            <div class="drow"><span>Deduction value</span><span style="color:var(--green)">$69.36</span></div>
+          </div>
+          <div class="toggle">
+            <div class="act">Business</div>
+            <div>Personal</div>
+          </div>
+        </div>
+        <div class="nav">
+          <div><div class="dot"></div>Home</div>
+          <div class="on"><div class="dot"></div>Drives</div>
+          <div><div class="dot"></div>Reports</div>
+          <div><div class="dot"></div>Settings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <div class="phonewrap">
+    <div class="label">Report &amp; export</div>
+    <div class="phone"><div class="notch"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ▮▮▮ ⚡</span></div>
+        <div class="scroll">
+          <div class="greet"><h2 style="font-size:22px">Expense report</h2></div>
+          <div class="report" style="margin-top:14px">
+            <h4>MileWorth Summary</h4>
+            <div class="rng">Jan 1 – Mar 31, 2026</div>
+            <div class="ln"><span>Business miles</span><span>9,840 mi</span></div>
+            <div class="ln"><span>Mileage deduction</span><span>$6,642</span></div>
+            <div class="ln"><span>Tracked expenses</span><span>$717.97</span></div>
+            <div class="ln"><span>Receipts attached</span><span>23</span></div>
+            <div class="total"><span>Total</span><span>$7,359</span></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;margin-top:16px;padding:0 4px">
+            <svg width="86" height="86" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#eef1f4" stroke-width="4.5"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#15426F" stroke-width="4.5" stroke-dasharray="77 100" stroke-dashoffset="25" transform="rotate(-90 18 18)"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F4B740" stroke-width="4.5" stroke-dasharray="15 100" stroke-dashoffset="-52" transform="rotate(-90 18 18)"/>
+            </svg>
+            <div class="legend">
+              <div class="leg"><span class="sw" style="background:#15426F"></span>Business · 77%</div>
+              <div class="leg"><span class="sw" style="background:#F4B740"></span>Personal · 15%</div>
+              <div class="leg"><span class="sw" style="background:#eef1f4"></span>Uncategorized · 8%</div>
+            </div>
+          </div>
+          <div class="btns">
+            <div class="btn btn-p">Export PDF</div>
+            <div class="btn btn-s">CSV</div>
+          </div>
+          <div class="btn btn-s" style="margin-top:10px">Share with accountant</div>
+        </div>
+        <div class="nav">
+          <div><div class="dot"></div>Home</div>
+          <div><div class="dot"></div>Drives</div>
+          <div class="on"><div class="dot"></div>Reports</div>
+          <div><div class="dot"></div>Settings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
