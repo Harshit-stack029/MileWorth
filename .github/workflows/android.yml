@@ -53,6 +53,24 @@ jobs:
           name: mileworth-debug-apk
           path: app/build/app/outputs/flutter-apk/app-debug.apk
 
+      # Release APK — small (split per ABI), assertions stripped, directly
+      # installable. When no Play signing secrets are set the build falls back to
+      # debug signing (see android/app/build.gradle.kts), so this still produces
+      # an installable APK for testers without configuring secrets.
+      - name: Build release APK (split per ABI)
+        run: |
+          if [ -n "$API_BASE_URL" ]; then
+            flutter build apk --release --split-per-abi --dart-define=API_BASE_URL=$API_BASE_URL
+          else
+            flutter build apk --release --split-per-abi
+          fi
+
+      - name: Upload release APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: mileworth-release-apks
+          path: app/build/app/outputs/flutter-apk/*-release.apk
+
       # ---- Release AAB (only when signing secrets are configured) ----
       - name: Restore keystore + key.properties
         if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''

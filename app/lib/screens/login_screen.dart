@@ -28,6 +28,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    // Dismiss the keyboard / drop focus before authenticating. On success the
+    // auth state flips and _AuthGate swaps this whole screen for HomeShell; if a
+    // text field is still focused during that teardown the framework trips the
+    // '_dependents.isEmpty' assertion. Unfocusing first avoids it.
+    FocusScope.of(context).unfocus();
     setState(() => _busy = true);
     final state = context.read<AppState>();
     try {
