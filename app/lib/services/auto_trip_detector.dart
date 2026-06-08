@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -64,11 +65,42 @@ class AutoTripDetector extends ChangeNotifier {
     await _sentinel?.cancel();
     _movingStreak = 0;
     _sentinel = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: _sentinelSettings(),
+    ).listen(_onSentinel);
+  }
+
+  /// Low-power "is a drive starting?" stream. To detect drives even when the
+  /// app is closed, this must keep running in the background — which on Android
+  /// requires a foreground service and on iOS requires background location
+  /// updates. Without these the OS suspends the stream and auto-tracking only
+  /// works while the app is foregrounded. Accuracy is low + a large distance
+  /// filter so the battery cost stays small until a real drive promotes it to
+  /// the high-accuracy recorder.
+  LocationSettings _sentinelSettings() {
+    if (Platform.isAndroid) {
+      return AndroidSettings(
         accuracy: LocationAccuracy.low,
         distanceFilter: 50,
-      ),
-    ).listen(_onSentinel);
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'MileWorth auto-tracking is on',
+          notificationText: 'Watching for the start of a drive',
+          enableWakeLock: false,
+        ),
+      );
+    }
+    if (Platform.isIOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.low,
+        distanceFilter: 50,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.low,
+      distanceFilter: 50,
+    );
   }
 
   Future<void> _stopSentinel() async {

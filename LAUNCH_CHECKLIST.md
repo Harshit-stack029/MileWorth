@@ -34,10 +34,12 @@ Manual tracking works. To test:
 - Open the app → Dashboard → **Start** (GPS banner) → drive a short loop →
   **Stop** → confirm a trip appears with correct miles + a deduction value.
 
-**Caveat (gap #1 below):** fully-*automatic* detection while the app is **closed**
-is **not reliable yet** on Android. Test auto-mode with the app **open/foreground**
-for now. Don't expect it to catch drives when the app is swiped away — that needs
-the fix in gap #1.
+**Update:** gap #1 (background auto-start) now has a fix on the branch — the
+sentinel runs as a low-power background service, so auto-mode *should* now catch
+drives with the app closed. When auto-tracking is on you'll see a persistent
+"MileWorth auto-tracking is on" notification (that's required by Android and is
+how it stays alive). **Please drive-test this specifically:** enable auto-track,
+swipe the app away, drive a loop, and check a trip was recorded.
 
 ## 5. 🔴 Play Store launch prep
 - **Generate an upload keystore** (needs Java/`keytool`; not installable on your
@@ -71,15 +73,15 @@ the fix in gap #1.
 
 ## ⚠️ Code gaps (real, intentionally NOT changed overnight — they need testing)
 
-### Gap #1 — automatic background trip detection
+### Gap #1 — automatic background trip detection — ✅ FIX ON BRANCH (needs drive-test)
 `auto_trip_detector.dart` runs a low-power "sentinel" GPS stream to notice when a
-drive starts, then promotes to the foreground-service recorder. The **sentinel
-itself has no background/foreground-service config**, so when the app is closed
-Android throttles/kills it — meaning auto-start won't fire reliably in the
-background. The recorder (once started) survives via its foreground service; the
-*starting* is the weak link. Fixing it well (a persistent low-power foreground
-service, or true Android activity-recognition) is a real change that must be
-**drive-tested**, so I left it for us to do together rather than ship blind.
+drive starts, then promotes to the foreground-service recorder. Previously the
+sentinel had no background config, so Android suspended it when the app closed.
+**Fixed:** the sentinel now uses a low-power Android foreground service (and iOS
+background-location updates), so it stays alive to catch drives with the app
+closed. Cost: a persistent low-key notification while auto-tracking is enabled
+(unavoidable on Android, and how every always-on mileage app works). **Must be
+drive-tested** before trusting it — see task #4.
 
 ### Gap #2 — production billing verification
 `backend/.../billingController.js` returns 501 in production by design (never
