@@ -12,12 +12,19 @@ import 'trips_screen.dart';
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
+  /// Lets a child tab (e.g. the dashboard) switch the selected bottom-nav tab.
+  static void goToTab(BuildContext context, int index) {
+    context.findAncestorStateOfType<_HomeShellState>()?._setIndex(index);
+  }
+
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  void _setIndex(int i) => setState(() => _index = i);
 
   static const _titles = ['Dashboard', 'Trips', 'Expenses', 'Reports', 'Settings'];
   static const _pages = [

@@ -88,6 +88,17 @@ class TripTracker extends ChangeNotifier {
         ),
       );
     }
+    if (Platform.isIOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        // Keep the GPS stream alive while the app is backgrounded so trips
+        // are recorded even when the app is not in the foreground.
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    }
     return const LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 5,
@@ -96,16 +107,21 @@ class TripTracker extends ChangeNotifier {
 
   void _onPosition(Position pos) {
     route.add(pos);
-    if (_last != null) {
+    if (_last == null) {
+      _last = pos;
+    } else {
       final step = Geolocator.distanceBetween(
         _last!.latitude, _last!.longitude, pos.latitude, pos.longitude,
       );
       if (step >= _minStepMeters) {
         distanceMeters += step;
+        _last = pos;
         notifyListeners();
       }
+      // Below the jitter threshold: keep the existing anchor so slow, stop-and-go
+      // movement accumulates toward the threshold instead of being silently
+      // dropped (which undercounted tax mileage on city/slow drives).
     }
-    _last = pos;
 
     final moving = pos.speed >= _movingSpeedMps;
     if (moving) {

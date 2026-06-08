@@ -117,7 +117,8 @@ class _TripTile extends StatelessWidget {
   }
 }
 
-String _label(String c) => '${c[0].toUpperCase()}${c.substring(1)}';
+String _label(String c) =>
+    c.isEmpty ? c : '${c[0].toUpperCase()}${c.substring(1)}';
 
 class _CategoryBadge extends StatelessWidget {
   final String category;

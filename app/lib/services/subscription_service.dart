@@ -84,7 +84,12 @@ class SubscriptionService extends ChangeNotifier {
         case PurchaseStatus.restored:
           // Server verifies the token before granting Pro.
           try {
-            await onVerify(p.verificationData.serverVerificationData, p.productID);
+            final granted = await onVerify(
+                p.verificationData.serverVerificationData, p.productID);
+            if (!granted) {
+              lastError = 'We could not verify your purchase. Try Restore, or '
+                  'contact support if you were charged.';
+            }
           } catch (e) {
             lastError = e.toString();
           }

@@ -60,13 +60,18 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
           printf '%s' "$KEY_PROPERTIES" > android/key.properties
 
+      # --obfuscate + --split-debug-info strip Dart symbols out of the binary,
+      # shrinking the download and hardening the code. The stripped symbols are
+      # uploaded separately so crash reports can still be de-obfuscated. The App
+      # Bundle itself lets Play deliver only each device's CPU arch (~7-9 MB).
       - name: Build release AAB
         if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
         run: |
+          COMMON="--release --obfuscate --split-debug-info=build/symbols"
           if [ -n "$API_BASE_URL" ]; then
-            flutter build appbundle --release --dart-define=API_BASE_URL=$API_BASE_URL
+            flutter build appbundle $COMMON --dart-define=API_BASE_URL=$API_BASE_URL
           else
-            flutter build appbundle --release
+            flutter build appbundle $COMMON
           fi
 
       - name: Upload release AAB
@@ -75,6 +80,13 @@ jobs:
         with:
           name: mileworth-release-aab
           path: app/build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload de-obfuscation symbols
+        if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: mileworth-debug-symbols
+          path: app/build/symbols
 
       # ---- Optional: push the debug APK to Firebase App Distribution ----
       - name: Distribute to Firebase testers
