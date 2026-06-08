@@ -60,14 +60,21 @@ swipe the app away, drive a loop, and check a trip was recorded.
   to create the feature graphic (1024×500) and 2–8 screenshots.
 - **Data safety form:** answers are pre-written in `docs/STORE_LISTING.md`.
 
-## 6. ⚠️🔴 Subscriptions / billing
+## 6. 🔴 Subscriptions / billing — backend now implemented, needs your credentials
 - **Create the product** in Play Console: subscription with product ID
   **`mileworth_pro_monthly`** (this exact ID is what the app queries).
-- **Backend gap (gap #2 below):** server-side purchase verification returns
-  **501 in production** on purpose — it's not implemented. Until it's wired,
-  buying won't unlock Pro on your live backend. Needs a Google Play service
-  account + Developer API call. I can implement it when you have the service
-  account JSON.
+- **Server verification is now built** (gated, off until configured). To turn it
+  on:
+  1. Google Cloud → create a **service account**, enable the **Google Play
+     Android Developer API**, download its **JSON key**.
+  2. Play Console → **Users & permissions** → invite that service account →
+     grant **View financial data / Manage orders**.
+  3. In **Render → mileworth-api → Environment**, add:
+     - `GOOGLE_SERVICE_ACCOUNT_JSON` = the full JSON key (one line)
+     - `ANDROID_PACKAGE_NAME` = `com.mileworth.app` (already the default)
+  4. Save → Render redeploys → purchases are verified for real.
+  Until those are set, production safely returns 501 (no Pro on unverified
+  claims), exactly as before — so nothing breaks by merging.
 
 ---
 
@@ -83,10 +90,14 @@ closed. Cost: a persistent low-key notification while auto-tracking is enabled
 (unavoidable on Android, and how every always-on mileage app works). **Must be
 drive-tested** before trusting it — see task #4.
 
-### Gap #2 — production billing verification
-`backend/.../billingController.js` returns 501 in production by design (never
-grant Pro on an unverified claim). Implementing it needs the Google Play
-Developer API (`purchases.subscriptionsv2.get`) with a service account.
+### Gap #2 — production billing verification — ✅ IMPLEMENTED (needs your credentials + a test purchase)
+`backend/src/utils/googlePlay.js` now verifies subscription tokens via the
+Android Publisher API (built with your existing `jsonwebtoken` dep — no new
+packages, so `npm ci` is unaffected). It's **gated**: with no service account
+configured, production returns 501 exactly as before, so merging changes nothing
+until you opt in (see task #6). Unit-tested offline (`test/googlePlay.test.js`).
+Still do a real sandbox test purchase once credentials are set before relying on
+revenue.
 
 ---
 

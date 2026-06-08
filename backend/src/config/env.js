@@ -31,4 +31,7 @@ module.exports = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '30d',
   defaultMileageRate: parseFloat(process.env.DEFAULT_MILEAGE_RATE || '0.70'),
   defaultCurrency: process.env.DEFAULT_CURRENCY || 'USD',
+  // Google Play subscription verification (optional; off until configured).
+  googleServiceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+  androidPackageName: process.env.ANDROID_PACKAGE_NAME || 'com.mileworth.app',
 };
