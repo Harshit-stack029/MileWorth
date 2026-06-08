@@ -68,5 +68,17 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Mileworth uses your location to automatically detect drives and log mileage for your tax deductions.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Mileworth tracks your location in the background so it can record trips automatically even when the app is closed.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Mileworth needs access to your photos so you can attach receipts to your trips and expenses.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Mileworth needs camera access so you can capture receipts for your trips and expenses.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>location</string>
+		</array>
 	</dict>
 </plist>

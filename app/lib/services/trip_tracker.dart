@@ -88,6 +88,17 @@ class TripTracker extends ChangeNotifier {
         ),
       );
     }
+    if (Platform.isIOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        // Keep the GPS stream alive while the app is backgrounded so trips
+        // are recorded even when the app is not in the foreground.
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    }
     return const LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 5,
