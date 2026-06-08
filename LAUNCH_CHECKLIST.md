@@ -1,0 +1,99 @@
+# MileWorth — Launch Checklist (your wake-up TODO)
+
+Prepared overnight. The app is **fully working end-to-end** already. This list is
+everything left, in priority order. Items marked **🔴 you only** need your
+accounts/hands (I can't do them); items marked **🟢 ready** are done or I can
+finish on request. The two **⚠️ code gaps** are real and explained at the bottom.
+
+---
+
+## 1. 🔴 Security — rotate the database password (do first)
+Your Atlas password was exposed in chat and your DB is open to the internet.
+1. Atlas → **Database Access** → user `harishharshith029_db_user` → **Edit** →
+   **Edit Password** → **Autogenerate** → copy → **Update User**.
+2. Build the new connection string (swap the password between `:` and `@`).
+3. Render → **mileworth-api** → **Environment** → update `MONGODB_URI` → Save
+   (auto-redeploys).
+4. Update `backend/.env` locally with the same value.
+5. Paste me the new string and I'll verify Render reconnects + login still works.
+
+## 2. 🟢 Merge the fix → keep `main` current
+On GitHub, merge the **`fix-login-crash`** pull request (same as you did for #1).
+It contains: the login-crash fix, the Render URL as the default backend, the
+installable release-APK CI step, and these docs. (Direct push to `main` is
+blocked by a review guardrail, so this one's a click for you.)
+
+## 3. 🟢 Install the fixed app
+The **v0.1.3** build is at the Actions tab. Download artifact
+**`mileworth-release-apks`** → **uninstall** the old MileWorth → install
+`app-arm64-v8a-release.apk`. It already points at your Render backend (no server
+setup) and won't crash on login.
+
+## 4. ⚠️🔴 Test the core feature (driving) — READ THE CAVEAT
+Manual tracking works. To test:
+- Open the app → Dashboard → **Start** (GPS banner) → drive a short loop →
+  **Stop** → confirm a trip appears with correct miles + a deduction value.
+
+**Caveat (gap #1 below):** fully-*automatic* detection while the app is **closed**
+is **not reliable yet** on Android. Test auto-mode with the app **open/foreground**
+for now. Don't expect it to catch drives when the app is swiped away — that needs
+the fix in gap #1.
+
+## 5. 🔴 Play Store launch prep
+- **Generate an upload keystore** (needs Java/`keytool`; not installable on your
+  Mac as-is). Easiest: run this in any environment with the JDK, or I can set up
+  a one-off GitHub Action to generate it for you — just ask:
+  ```
+  keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 \
+    -validity 10000 -alias upload
+  ```
+- **Add GitHub secrets** (repo → Settings → Secrets and variables → Actions):
+  - `ANDROID_KEYSTORE_BASE64` = `base64 -i upload-keystore.jks`
+  - `ANDROID_KEY_PROPERTIES` = the 4 lines (storePassword, keyPassword, keyAlias,
+    storeFile=upload-keystore.jks)
+  Then a tagged build produces a **signed `.aab`** for Play.
+- **Privacy policy:** host `docs/PRIVACY.md` at a public URL (see that file's
+  notes). Required by Play.
+- **Listing + assets:** copy is ready in `docs/STORE_LISTING.md`. You still need
+  to create the feature graphic (1024×500) and 2–8 screenshots.
+- **Data safety form:** answers are pre-written in `docs/STORE_LISTING.md`.
+
+## 6. ⚠️🔴 Subscriptions / billing
+- **Create the product** in Play Console: subscription with product ID
+  **`mileworth_pro_monthly`** (this exact ID is what the app queries).
+- **Backend gap (gap #2 below):** server-side purchase verification returns
+  **501 in production** on purpose — it's not implemented. Until it's wired,
+  buying won't unlock Pro on your live backend. Needs a Google Play service
+  account + Developer API call. I can implement it when you have the service
+  account JSON.
+
+---
+
+## ⚠️ Code gaps (real, intentionally NOT changed overnight — they need testing)
+
+### Gap #1 — automatic background trip detection
+`auto_trip_detector.dart` runs a low-power "sentinel" GPS stream to notice when a
+drive starts, then promotes to the foreground-service recorder. The **sentinel
+itself has no background/foreground-service config**, so when the app is closed
+Android throttles/kills it — meaning auto-start won't fire reliably in the
+background. The recorder (once started) survives via its foreground service; the
+*starting* is the weak link. Fixing it well (a persistent low-power foreground
+service, or true Android activity-recognition) is a real change that must be
+**drive-tested**, so I left it for us to do together rather than ship blind.
+
+### Gap #2 — production billing verification
+`backend/.../billingController.js` returns 501 in production by design (never
+grant Pro on an unverified claim). Implementing it needs the Google Play
+Developer API (`purchases.subscriptionsv2.get`) with a service account.
+
+---
+
+## ❓ Questions for you (answer any time)
+1. **Contact email** for the privacy policy / store listing? (I used a
+   placeholder `support@mileworth.app`.)
+2. **Subscription price** for `mileworth_pro_monthly`? (e.g. $6.99/mo)
+3. Want me to **implement gap #1** (background auto-detect) and **gap #2**
+   (billing verification) next — or focus on getting the Play Store listing live
+   first?
+4. Want me to set up the **one-off GitHub Action to generate your keystore** so
+   you don't need Java locally?
