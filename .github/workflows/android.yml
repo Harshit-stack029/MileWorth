@@ -21,6 +21,10 @@ jobs:
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       # API the released build points at. Set as a repo variable.
       API_BASE_URL: ${{ vars.API_BASE_URL }}
+      # Google Maps API key. build.gradle.kts reads this env var and injects it
+      # into AndroidManifest as ${MAPS_API_KEY}; empty when the secret is unset,
+      # so the map tiles simply won't load.
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 

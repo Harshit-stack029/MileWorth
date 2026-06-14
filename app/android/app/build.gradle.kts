@@ -15,6 +15,10 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+// True only when a real keystore is configured — not merely when the file
+// exists. key.properties may hold only mapsApiKey (no signing creds), in which
+// case release builds must still fall back to debug signing.
+val hasReleaseKeystore = keystoreProperties["storeFile"] != null
 
 android {
     // Internal namespace (R class / Kotlin package). Distinct from applicationId.
@@ -48,7 +52,7 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
+            if (hasReleaseKeystore) {
                 keyAlias = keystoreProperties["keyAlias"] as String?
                 keyPassword = keystoreProperties["keyPassword"] as String?
                 storeFile = (keystoreProperties["storeFile"] as String?)?.let { file(it) }
@@ -59,7 +63,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
+            signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
