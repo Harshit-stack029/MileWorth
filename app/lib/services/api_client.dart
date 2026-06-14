@@ -20,6 +20,12 @@ class ApiClient {
   // point a test build at a LAN backend or your Render URL) via setBaseUrl.
   String baseUrl = ApiConfig.baseUrl;
 
+  /// Called when an AUTHENTICATED request comes back 401 (expired/revoked
+  /// token). Lets the app sign the user out instead of leaving them stuck in a
+  /// broken signed-in state. Not fired for unauthenticated calls (e.g. a
+  /// wrong-password login, which legitimately returns 401).
+  void Function()? onUnauthorized;
+
   void setToken(String? token) => _token = token;
 
   void setBaseUrl(String url) {
@@ -71,6 +77,12 @@ class ApiClient {
   }
 
   Never _throw(http.Response res) {
+    // Session expiry: an authenticated request was rejected. Notify the app so
+    // it can sign out. (_token is cleared on sign-out, so a subsequent login's
+    // 401 won't re-trigger this.)
+    if (res.statusCode == 401 && _token != null) {
+      onUnauthorized?.call();
+    }
     String message = 'Request failed (${res.statusCode})';
     try {
       final body = jsonDecode(res.body);

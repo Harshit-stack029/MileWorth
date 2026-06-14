@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/polyline.dart';
 
@@ -22,6 +24,10 @@ class TripTracker extends ChangeNotifier {
   // Consider the drive ended after this long below the moving threshold.
   static const Duration _stopAfter = Duration(minutes: 5);
   static const double _movingSpeedMps = 1.4; // ~5 km/h, faster than walking idle
+  // Persist the in-progress drive to disk at most every this many meters so it
+  // survives the OS killing the app mid-drive (FR-1 reliability).
+  static const double _persistEveryMeters = 50;
+  static const String _activeKey = 'active_trip_v1';
 
   StreamSubscription<Position>? _sub;
   Position? _last;
@@ -31,6 +37,10 @@ class TripTracker extends ChangeNotifier {
   bool tracking = false;
   double distanceMeters = 0;
   final List<Position> route = [];
+  // Snapshot bookkeeping for crash-recovery persistence.
+  double _lastPersistMeters = 0;
+  double? _startLat, _startLng, _lastLat, _lastLng;
+  DateTime? _lastFixAt;
 
   double get distanceMiles => distanceMeters / 1609.344;
 
@@ -66,6 +76,7 @@ class TripTracker extends ChangeNotifier {
     _reset();
     tracking = true;
     _startedAt = DateTime.now();
+    _persist(); // record the session immediately so a quick kill still recovers
 
     _sub = Geolocator.getPositionStream(
       locationSettings: _recordingSettings(),
@@ -109,6 +120,11 @@ class TripTracker extends ChangeNotifier {
 
   void _onPosition(Position pos) {
     route.add(pos);
+    _lastFixAt = DateTime.now();
+    _lastLat = pos.latitude;
+    _lastLng = pos.longitude;
+    _startLat ??= pos.latitude;
+    _startLng ??= pos.longitude;
     if (_last == null) {
       _last = pos;
     } else {
@@ -118,6 +134,10 @@ class TripTracker extends ChangeNotifier {
       if (step >= _minStepMeters) {
         distanceMeters += step;
         _last = pos;
+        // Throttled snapshot so an app kill loses at most ~50m of the drive.
+        if (distanceMeters - _lastPersistMeters >= _persistEveryMeters) {
+          _persist();
+        }
         notifyListeners();
       }
       // Below the jitter threshold: keep the existing anchor so slow, stop-and-go
@@ -172,8 +192,66 @@ class TripTracker extends ChangeNotifier {
       'endLng': route.last.longitude,
       if (encoded.isNotEmpty) 'routePolyline': encoded,
     };
-    _reset();
+    _reset(); // also clears the on-disk snapshot
     return payload;
+  }
+
+  // --- Crash-recovery persistence (Task 10) ---
+
+  /// Write a compact snapshot of the in-progress drive to disk. Only the fields
+  /// needed to rebuild a trip payload are stored (not the full route), so writes
+  /// stay cheap.
+  Future<void> _persist() async {
+    _lastPersistMeters = distanceMeters;
+    final start = _startedAt;
+    if (start == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeKey, jsonEncode({
+      'startedAt': start.toUtc().toIso8601String(),
+      'lastFixAt': (_lastFixAt ?? start).toUtc().toIso8601String(),
+      'distanceMeters': distanceMeters,
+      'samples': route.length,
+      'startLat': _startLat,
+      'startLng': _startLng,
+      'lastLat': _lastLat,
+      'lastLng': _lastLng,
+    }));
+  }
+
+  Future<void> _clearPersisted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_activeKey);
+  }
+
+  /// If the app was killed mid-drive, rebuild that drive as a finished trip
+  /// payload (ending at the last GPS fix) and clear the snapshot. Returns null
+  /// when there's nothing to recover or the drive was too short. Skipped while a
+  /// live recording is active so we never double-count.
+  Future<Map<String, dynamic>?> recoverInterruptedTrip() async {
+    if (tracking) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_activeKey);
+    if (raw == null || raw.isEmpty) return null;
+    await prefs.remove(_activeKey);
+
+    try {
+      final s = jsonDecode(raw) as Map<String, dynamic>;
+      final miles = (s['distanceMeters'] as num).toDouble() / 1609.344;
+      final samples = (s['samples'] as num?)?.toInt() ?? 0;
+      if (miles < 0.1 || samples < 2) return null;
+      return {
+        'startTime': s['startedAt'],
+        'endTime': s['lastFixAt'],
+        'distance': double.parse(miles.toStringAsFixed(2)),
+        'category': 'uncategorized',
+        'startLat': s['startLat'],
+        'startLng': s['startLng'],
+        'endLat': s['lastLat'],
+        'endLng': s['lastLng'],
+      };
+    } catch (_) {
+      return null; // corrupt snapshot — drop it
+    }
   }
 
   void _reset() {
@@ -183,6 +261,10 @@ class TripTracker extends ChangeNotifier {
     _startedAt = null;
     _stopTimer?.cancel();
     _stopTimer = null;
+    _lastPersistMeters = 0;
+    _startLat = _startLng = _lastLat = _lastLng = null;
+    _lastFixAt = null;
+    _clearPersisted();
   }
 
   @override

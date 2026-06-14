@@ -26,7 +26,11 @@ void main() {
             ctx.read<TripTracker>(),
             onTripComplete: (payload) => ctx.read<AppState>().addTrip(payload),
           )..load(),
-          update: (_, _, _, detector) => detector!,
+          // Once signed in, salvage any drive interrupted by an app kill.
+          update: (_, appState, _, detector) {
+            if (appState.status == AuthStatus.signedIn) detector!.maybeRecover();
+            return detector!;
+          },
         ),
         // Billing: verifies purchases through AppState -> backend.
         ChangeNotifierProxyProvider<AppState, SubscriptionService>(

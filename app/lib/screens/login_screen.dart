@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
 import '../theme.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +19,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _isRegister = false;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show a one-shot message if we landed here from an automatic sign-out.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final msg = context.read<AppState>().takeSessionMessage();
+      if (msg != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -130,6 +144,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? 'Have an account? Sign in'
                           : 'New here? Create an account'),
                     ),
+                    if (!_isRegister)
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) => const ForgotPasswordScreen()),
+                                ),
+                        child: const Text('Forgot password?'),
+                      ),
                     const SizedBox(height: 24),
                     TextButton.icon(
                       onPressed: _busy ? null : _editServerUrl,

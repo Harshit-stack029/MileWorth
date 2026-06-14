@@ -5,6 +5,7 @@ class AppUser {
   final String currency;
   final String subscriptionStatus;
   final bool classifyWeekendsAsPersonal;
+  final bool emailVerified;
 
   AppUser({
     required this.id,
@@ -13,6 +14,7 @@ class AppUser {
     required this.currency,
     required this.subscriptionStatus,
     required this.classifyWeekendsAsPersonal,
+    required this.emailVerified,
   });
 
   bool get isSubscribed => subscriptionStatus == 'active';
@@ -25,6 +27,7 @@ class AppUser {
       currency: json['currency'] as String? ?? 'USD',
       subscriptionStatus: json['subscriptionStatus'] as String? ?? 'free',
       classifyWeekendsAsPersonal: json['classifyWeekendsAsPersonal'] as bool? ?? false,
+      emailVerified: json['emailVerified'] as bool? ?? false,
     );
   }
 }

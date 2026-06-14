@@ -39,9 +39,10 @@ dependencies:
   provider: ^6.1.2
   # REST calls to the MileWorth backend
   http: ^1.2.2
-  # Token storage on device (Phase 1 uses shared_preferences; move to
-  # flutter_secure_storage before release)
+  # App preferences (onboarding flag, server URL, offline outbox).
   shared_preferences: ^2.3.2
+  # Encrypted storage for the auth token (Keychain / Android Keystore).
+  flutter_secure_storage: ^9.2.2
   # Number / currency / date formatting
   intl: ^0.19.0
   # GPS location + distance (Sprint 2 auto-tracking). Re-exports AndroidSettings /

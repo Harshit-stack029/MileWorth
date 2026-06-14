@@ -185,7 +185,7 @@ Goal: detect a real drive, classify it, show a deduction total. Test on actual d
 FR-7, FR-8, FR-9, FR-10, FR-12.
 
 **Phase 3 — Insights & polish:**
-FR-11, FR-13, FR-14.
+FR-11, FR-13, FR-14.ho
 
 Ship and test each phase before starting the next.
 

@@ -1,4 +1,5 @@
 // Smoke tests for the auth/onboarding gate.
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ void main() {
   testWidgets('Shows login when signed out and onboarding already seen',
       (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({'onboarding_seen': true});
+    FlutterSecureStorage.setMockInitialValues({});
     final state = AppState();
     await tester.pumpWidget(
       ChangeNotifierProvider.value(value: state, child: const MileWorthApp()),
@@ -24,6 +26,7 @@ void main() {
 
   testWidgets('Shows onboarding on first launch', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
     final state = AppState();
     await tester.pumpWidget(
       MultiProvider(

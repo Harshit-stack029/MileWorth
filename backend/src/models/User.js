@@ -23,6 +23,9 @@ const userSchema = new mongoose.Schema(
     },
     // Auto-classification rule (FR-14): weekend drives default to personal.
     classifyWeekendsAsPersonal: { type: Boolean, default: false },
+    // Email verification state (set true after the user confirms via the
+    // emailed link). New accounts start unverified.
+    emailVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -44,6 +47,7 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     currency: this.currency,
     subscriptionStatus: this.subscriptionStatus,
     classifyWeekendsAsPersonal: this.classifyWeekendsAsPersonal,
+    emailVerified: this.emailVerified,
     createdAt: this.createdAt,
   };
 };

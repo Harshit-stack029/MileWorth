@@ -34,8 +34,22 @@ class AutoTripDetector extends ChangeNotifier {
 
   bool enabled = false;
   bool _recording = false;
+  bool _recoveryDone = false;
   StreamSubscription<Position>? _sentinel;
   int _movingStreak = 0;
+
+  /// Once per app launch (after the user is signed in), salvage any drive that
+  /// was interrupted by the OS killing the app mid-recording, and save it.
+  Future<void> maybeRecover() async {
+    if (_recoveryDone) return;
+    _recoveryDone = true;
+    try {
+      final payload = await _tracker.recoverInterruptedTrip();
+      if (payload != null) await onTripComplete(payload);
+    } catch (_) {
+      // Best-effort: never let recovery crash startup.
+    }
+  }
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();

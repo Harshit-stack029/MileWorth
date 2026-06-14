@@ -17,7 +17,12 @@ class AppState extends ChangeNotifier {
   AppState({ApiClient? api, TokenStorage? storage, Outbox? outbox})
       : _api = api ?? ApiClient(),
         _storage = storage ?? TokenStorage(),
-        _outbox = outbox ?? Outbox();
+        _outbox = outbox ?? Outbox() {
+    // Sign out automatically when the server rejects our token mid-session.
+    _api.onUnauthorized = _handleSessionExpired;
+  }
+
+  bool _handlingExpiry = false;
 
   final ApiClient _api;
   final TokenStorage _storage;
@@ -32,6 +37,9 @@ class AppState extends ChangeNotifier {
   bool loading = false;
   bool onboardingSeen = false;
   String? error;
+  // One-shot message shown on the login screen after an automatic sign-out
+  // (e.g. session expiry). Consumed + cleared by the UI.
+  String? sessionMessage;
 
   static const _onboardingKey = 'onboarding_seen';
   static const _serverUrlKey = 'server_url';
@@ -101,6 +109,30 @@ class AppState extends ChangeNotifier {
   Future<void> login(String email, String password) =>
       _authenticate('/auth/login', email, password);
 
+  /// Request a password-reset email. Returns a dev-only token (non-production
+  /// backends echo it back so the flow is testable without a mail provider);
+  /// in production this is always null and the user gets the token by email.
+  Future<String?> requestPasswordReset(String email) async {
+    final res = await _api.post('/auth/forgot-password', {'email': email.trim()});
+    return res is Map ? res['devToken'] as String? : null;
+  }
+
+  /// Complete a password reset with the emailed token; signs the user in.
+  Future<void> resetPassword(String token, String password) async {
+    final res = await _api.post('/auth/reset-password', {
+      'token': token.trim(),
+      'password': password,
+    });
+    final t = res['token'] as String;
+    await _storage.write(t);
+    _api.setToken(t);
+    user = AppUser.fromJson(res['user']);
+    status = AuthStatus.signedIn;
+    error = null;
+    notifyListeners();
+    await refresh();
+  }
+
   Future<void> register(String email, String password) =>
       _authenticate('/auth/register', email, password);
 
@@ -114,6 +146,56 @@ class AppState extends ChangeNotifier {
     pendingSync = 0;
     status = AuthStatus.signedOut;
     notifyListeners();
+  }
+
+  /// Re-send the email-verification message to the signed-in user. Returns a
+  /// dev-only token (non-production echoes it back) or null in production.
+  Future<String?> resendVerification() async {
+    final res = await _api.post('/auth/me/resend-verification', {});
+    return res is Map ? res['devToken'] as String? : null;
+  }
+
+  /// Confirm an email-verification token, then refresh the local user so the
+  /// "verify your email" banner disappears.
+  Future<void> verifyEmail(String token) async {
+    final res = await _api.post('/auth/verify-email', {'token': token.trim()});
+    user = AppUser.fromJson(res['user']);
+    notifyListeners();
+  }
+
+  /// Re-fetch the current user (e.g. to pick up server-side verification).
+  Future<void> refreshUser() async {
+    final res = await _api.get('/auth/me');
+    user = AppUser.fromJson(res['user']);
+    notifyListeners();
+  }
+
+  /// Invoked by [ApiClient] when an authenticated request returns 401. Signs the
+  /// user out once and surfaces a "session expired" message. Guarded against
+  /// re-entrancy when several in-flight requests all 401 at once.
+  void _handleSessionExpired() {
+    if (_handlingExpiry || status != AuthStatus.signedIn) return;
+    _handlingExpiry = true;
+    signOut().then((_) {
+      sessionMessage = 'Your session expired. Please sign in again.';
+      _handlingExpiry = false;
+      notifyListeners();
+    });
+  }
+
+  /// Read-and-clear the one-shot session message.
+  String? takeSessionMessage() {
+    final msg = sessionMessage;
+    sessionMessage = null;
+    return msg;
+  }
+
+  /// Permanently delete the account and all server-side data, then sign out.
+  /// Required for Play Store compliance. Throws [ApiException] on failure so the
+  /// UI can keep the user signed in and show the error.
+  Future<void> deleteAccount() async {
+    await _api.delete('/auth/me');
+    await signOut();
   }
 
   /// Reload trips + dashboard summary. Also flushes any offline queue first.

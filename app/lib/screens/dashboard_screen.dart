@@ -22,6 +22,10 @@ class DashboardScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (state.user != null && !state.user!.emailVerified) ...[
+            const _EmailVerifyBanner(),
+            const SizedBox(height: 16),
+          ],
           if (state.pendingSync > 0) ...[
             Card(
               color: AppColors.personal.withValues(alpha: 0.12),
@@ -146,6 +150,90 @@ class _StatCard extends StatelessWidget {
             Text(label, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Prompts the user to confirm their email. Soft-gate (dismissible) so it never
+/// strands a user — verification improves account recovery & deliverability but
+/// isn't required to use the app.
+class _EmailVerifyBanner extends StatefulWidget {
+  const _EmailVerifyBanner();
+
+  @override
+  State<_EmailVerifyBanner> createState() => _EmailVerifyBannerState();
+}
+
+class _EmailVerifyBannerState extends State<_EmailVerifyBanner> {
+  bool _busy = false;
+
+  Future<void> _resend() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final state = context.read<AppState>();
+    setState(() => _busy = true);
+    try {
+      final devToken = await state.resendVerification();
+      if (!mounted) return;
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Verification email sent — check your inbox.')));
+      if (devToken != null) await _enterCode(prefill: devToken);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _enterCode({String? prefill}) async {
+    final controller = TextEditingController(text: prefill ?? '');
+    final messenger = ScaffoldMessenger.of(context);
+    final state = context.read<AppState>();
+    final token = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enter verification code'),
+        content: TextField(
+          controller: controller,
+          minLines: 1,
+          maxLines: 3,
+          autocorrect: false,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Paste the code from your email',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              child: const Text('Verify')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (token == null || token.trim().isEmpty) return;
+    try {
+      await state.verifyEmail(token);
+      messenger.showSnackBar(const SnackBar(content: Text('Email verified ✓')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: AppColors.gold.withValues(alpha: 0.15),
+      child: ListTile(
+        leading: const Icon(Icons.mark_email_unread_outlined, color: AppColors.personal),
+        title: const Text('Verify your email'),
+        subtitle: const Text('Confirm your email to secure account recovery.'),
+        trailing: _busy
+            ? const SizedBox(
+                height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+            : TextButton(onPressed: _resend, child: const Text('Resend')),
+        onTap: _busy ? null : () => _enterCode(),
       ),
     );
   }

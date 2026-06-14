@@ -7,23 +7,18 @@ const googlePlay = require('../utils/googlePlay');
  * Verify a Google Play purchase and activate the subscription.
  *
  * SECURITY: the client must never be trusted to declare itself subscribed.
- * In production we confirm the purchaseToken with the Google Play Developer API
- * (purchases.subscriptionsv2) via a service account before flipping the status.
- * That integration is OFF until GOOGLE_SERVICE_ACCOUNT_JSON is configured — when
- * absent we return 501 so Pro is never granted on an unverified claim.
- *
- * In non-production we allow a mock activation so the paywall/UX can be tested
- * end-to-end without a Play account.
+ * Decision order (independent of NODE_ENV, so a misconfigured deployment can't
+ * leak free Pro):
+ *   1. If Google Play verification is configured, ALWAYS verify the
+ *      purchaseToken with the Android Publisher API before granting Pro.
+ *   2. Else, if ALLOW_MOCK_BILLING=true (local dev only), mock-activate so the
+ *      paywall UX is testable without a Play account.
+ *   3. Else, return 501 — Pro is never granted on an unverified claim.
  */
 const verify = asyncHandler(async (req, res) => {
   const { purchaseToken, productId } = req.body;
 
-  if (env.nodeEnv === 'production') {
-    if (!googlePlay.isConfigured()) {
-      return res.status(501).json({
-        error: 'Subscription verification is not configured yet',
-      });
-    }
+  if (googlePlay.isConfigured()) {
     if (!purchaseToken || !productId) {
       return res.status(400).json({ error: 'purchaseToken and productId are required' });
     }
@@ -45,15 +40,20 @@ const verify = asyncHandler(async (req, res) => {
     return res.json({ user: user.toPublicJSON() });
   }
 
-  if (!purchaseToken || !productId) {
-    return res.status(400).json({ error: 'purchaseToken and productId are required' });
+  if (env.allowMockBilling) {
+    if (!purchaseToken || !productId) {
+      return res.status(400).json({ error: 'purchaseToken and productId are required' });
+    }
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    user.subscriptionStatus = 'active';
+    await user.save();
+    return res.json({ user: user.toPublicJSON(), mock: true });
   }
 
-  const user = await User.findById(req.user.userId);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-  user.subscriptionStatus = 'active';
-  await user.save();
-  return res.json({ user: user.toPublicJSON(), mock: true });
+  return res.status(501).json({
+    error: 'Subscription verification is not configured yet',
+  });
 });
 
 module.exports = { verify };

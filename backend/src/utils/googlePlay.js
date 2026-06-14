@@ -20,6 +20,10 @@ if (env.googleServiceAccountJson) {
     serviceAccount = JSON.parse(env.googleServiceAccountJson);
   } catch (e) {
     parseError = e.message;
+    // Surface it loudly — otherwise a malformed paste silently disables billing
+    // (isConfigured() returns false → every purchase gets a confusing 501).
+    // eslint-disable-next-line no-console
+    console.error(`[googlePlay] GOOGLE_SERVICE_ACCOUNT_JSON could not be parsed: ${e.message}`);
   }
 }
 

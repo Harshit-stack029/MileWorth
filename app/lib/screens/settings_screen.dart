@@ -76,8 +76,73 @@ class SettingsScreen extends StatelessWidget {
           title: const Text('Sign out', style: TextStyle(color: Colors.red)),
           onTap: state.signOut,
         ),
+        if (user != null)
+          ListTile(
+            leading: const Icon(Icons.delete_forever, color: Colors.red),
+            title: const Text('Delete account',
+                style: TextStyle(color: Colors.red)),
+            subtitle: const Text(
+              'Permanently erase your account, trips, expenses and receipts.',
+            ),
+            onTap: () => _confirmDeleteAccount(context, state),
+          ),
       ],
     );
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context, AppState state) async {
+    final confirm = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This permanently deletes your account and all of your trips, '
+              'expenses and receipts. This cannot be undone.\n\n'
+              'Type DELETE to confirm.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: confirm,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'DELETE',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: confirm,
+            builder: (_, value, _) => FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: value.text.trim().toUpperCase() == 'DELETE'
+                  ? () => Navigator.pop(ctx, true)
+                  : null,
+              child: const Text('Delete forever'),
+            ),
+          ),
+        ],
+      ),
+    );
+    confirm.dispose();
+    if (ok != true) return;
+    try {
+      await state.deleteAccount();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not delete account: $e')),
+      );
+    }
   }
 
   Future<void> _editRate(BuildContext context, AppState state) async {

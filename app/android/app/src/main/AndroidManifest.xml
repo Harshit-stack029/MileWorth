@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for ALL builds to reach the backend API. Previously only the
+         debug/profile manifests declared INTERNET, so release APKs shipped with
+         no network access. Declared here so every build type can make HTTP calls. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Location permissions (Sprint 2 auto-tracking).
          ACCESS_BACKGROUND_LOCATION must be requested separately AND justified in
          the Play data-safety form — it is the #1 rejection cause for this app
