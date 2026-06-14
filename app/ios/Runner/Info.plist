@@ -80,5 +80,9 @@
 		<array>
 			<string>location</string>
 		</array>
+		<!-- Google Maps API key, supplied via the MAPS_API_KEY build setting
+		     (e.g. an xcconfig). Read by AppDelegate; see docs/MAPS_SETUP.md. -->
+		<key>MapsApiKey</key>
+		<string>$(MAPS_API_KEY)</string>
 	</dict>
 </plist>

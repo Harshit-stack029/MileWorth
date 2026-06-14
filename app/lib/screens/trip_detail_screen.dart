@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../models/trip.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../utils/polyline.dart';
 
 class TripDetailScreen extends StatelessWidget {
   final String tripId;
@@ -33,24 +35,9 @@ class TripDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Map placeholder — real route polyline rendered in Sprint 2.
-          Container(
-            height: 180,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map_outlined, size: 40, color: Colors.grey.shade400),
-                  const SizedBox(height: 8),
-                  Text('Route map — coming with GPS tracking',
-                      style: TextStyle(color: Colors.grey.shade600)),
-                ],
-              ),
-            ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(height: 180, child: _TripRouteMap(trip: trip)),
           ),
           const SizedBox(height: 16),
           Center(
@@ -105,6 +92,138 @@ class TripDetailScreen extends StatelessWidget {
       await state.deleteTrip(trip);
       if (context.mounted) Navigator.pop(context);
     }
+  }
+}
+
+/// Renders the recorded trip route on a Google map: the decoded polyline plus
+/// start/end markers, with the camera fitted to the route. Falls back to a
+/// straight start→end line when only endpoints are known, and to a placeholder
+/// when the trip has no coordinates at all (e.g. a manually-entered trip).
+class _TripRouteMap extends StatefulWidget {
+  final Trip trip;
+  const _TripRouteMap({required this.trip});
+
+  @override
+  State<_TripRouteMap> createState() => _TripRouteMapState();
+}
+
+class _TripRouteMapState extends State<_TripRouteMap> {
+  GoogleMapController? _controller;
+
+  /// The ordered points that make up the route. Prefers the full decoded
+  /// polyline; otherwise uses whatever endpoints exist.
+  List<LatLng> get _points {
+    final encoded = widget.trip.routePolyline;
+    if (encoded != null && encoded.isNotEmpty) {
+      final decoded = decodePolyline(encoded);
+      if (decoded.length >= 2) {
+        return [for (final p in decoded) LatLng(p.lat, p.lng)];
+      }
+    }
+    final t = widget.trip;
+    final pts = <LatLng>[];
+    if (t.startLat != null && t.startLng != null) {
+      pts.add(LatLng(t.startLat!, t.startLng!));
+    }
+    if (t.endLat != null && t.endLng != null) {
+      pts.add(LatLng(t.endLat!, t.endLng!));
+    }
+    return pts;
+  }
+
+  LatLngBounds _boundsOf(List<LatLng> points) {
+    var minLat = points.first.latitude, maxLat = points.first.latitude;
+    var minLng = points.first.longitude, maxLng = points.first.longitude;
+    for (final p in points) {
+      minLat = p.latitude < minLat ? p.latitude : minLat;
+      maxLat = p.latitude > maxLat ? p.latitude : maxLat;
+      minLng = p.longitude < minLng ? p.longitude : minLng;
+      maxLng = p.longitude > maxLng ? p.longitude : maxLng;
+    }
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+  }
+
+  void _fitToRoute(List<LatLng> points) {
+    final controller = _controller;
+    if (controller == null) return;
+    if (points.length < 2) {
+      controller.moveCamera(CameraUpdate.newLatLngZoom(points.first, 14));
+      return;
+    }
+    controller.moveCamera(CameraUpdate.newLatLngBounds(_boundsOf(points), 32));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final points = _points;
+    if (points.isEmpty) return const _MapPlaceholder();
+
+    final hasRoute = points.length >= 2;
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(target: points.first, zoom: 13),
+      onMapCreated: (c) {
+        _controller = c;
+        _fitToRoute(points);
+      },
+      myLocationButtonEnabled: false,
+      zoomControlsEnabled: false,
+      liteModeEnabled: true, // static, non-interactive map is plenty here
+      polylines: hasRoute
+          ? {
+              Polyline(
+                polylineId: const PolylineId('route'),
+                points: points,
+                color: AppColors.money,
+                width: 5,
+              ),
+            }
+          : const {},
+      markers: {
+        Marker(
+          markerId: const MarkerId('start'),
+          position: points.first,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(title: 'Start'),
+        ),
+        Marker(
+          markerId: const MarkerId('end'),
+          position: points.last,
+          infoWindow: const InfoWindow(title: 'End'),
+        ),
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+}
+
+class _MapPlaceholder extends StatelessWidget {
+  const _MapPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.grey.shade100,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.map_outlined, size: 40, color: Colors.grey.shade400),
+            const SizedBox(height: 8),
+            Text('No route recorded for this trip',
+                style: TextStyle(color: Colors.grey.shade600)),
+          ],
+        ),
+      ),
+    );
   }
 }
 

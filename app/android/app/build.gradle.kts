@@ -34,6 +34,16 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Google Maps API key injected into AndroidManifest as ${MAPS_API_KEY}.
+        // Sourced from the MAPS_API_KEY env var (CI) or mapsApiKey in the
+        // gitignored key.properties (local). Defaults to empty so builds never
+        // break when unset — the map tiles simply won't load. See
+        // docs/MAPS_SETUP.md.
+        manifestPlaceholders["MAPS_API_KEY"] =
+            System.getenv("MAPS_API_KEY")
+                ?: (keystoreProperties["mapsApiKey"] as String?)
+                ?: ""
     }
 
     signingConfigs {

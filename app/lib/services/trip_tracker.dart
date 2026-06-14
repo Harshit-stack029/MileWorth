@@ -4,6 +4,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../utils/polyline.dart';
+
 /// Records a single drive: accumulates distance from the GPS stream and
 /// detects when the vehicle has stopped.
 ///
@@ -152,6 +154,13 @@ class TripTracker extends ChangeNotifier {
       return null;
     }
 
+    // Compress the recorded fixes into an encoded polyline so the route can be
+    // drawn on the trip detail map. Downsampled to keep the stored string
+    // bounded on long drives (the stream emits a fix every ~5m).
+    final encoded = encodePolyline(downsample(
+      [for (final p in route) RoutePoint(p.latitude, p.longitude)],
+    ));
+
     final payload = {
       'startTime': start.toUtc().toIso8601String(),
       'endTime': end.toUtc().toIso8601String(),
@@ -161,6 +170,7 @@ class TripTracker extends ChangeNotifier {
       'startLng': route.first.longitude,
       'endLat': route.last.latitude,
       'endLng': route.last.longitude,
+      if (encoded.isNotEmpty) 'routePolyline': encoded,
     };
     _reset();
     return payload;
