@@ -92,8 +92,36 @@ async function getAccessToken() {
   return json.access_token;
 }
 
-// Returns { active, state, raw }. `active` is true for an ACTIVE subscription
-// (grace period also counts as still-entitled).
+// The latest expiry across a subscription's line items (subscriptionsv2 returns
+// one line item per product in the purchase). Returns ms epoch, or null.
+function latestExpiryMs(data) {
+  const items = Array.isArray(data.lineItems) ? data.lineItems : [];
+  let max = null;
+  for (const item of items) {
+    if (!item || !item.expiryTime) continue;
+    const ms = Date.parse(item.expiryTime);
+    if (!Number.isNaN(ms) && (max === null || ms > max)) max = ms;
+  }
+  return max;
+}
+
+// Pure entitlement decision so it can be unit-tested offline. A user is entitled
+// to Pro while the subscription is ACTIVE or in its grace period, OR has been
+// CANCELED but the already-paid period hasn't ended yet. ON_HOLD / PAUSED /
+// EXPIRED all revoke access.
+function isEntitled(state, expiryMs, now = Date.now()) {
+  if (state === 'SUBSCRIPTION_STATE_ACTIVE'
+    || state === 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD') {
+    return true;
+  }
+  if (state === 'SUBSCRIPTION_STATE_CANCELED') {
+    // Canceled auto-renew, but the user keeps Pro until the paid period ends.
+    return Boolean(expiryMs && expiryMs > now);
+  }
+  return false;
+}
+
+// Returns { entitled, state, expiryMs, raw }.
 async function verifySubscription({ purchaseToken }) {
   const accessToken = await getAccessToken();
   const pkg = env.androidPackageName;
@@ -110,9 +138,11 @@ async function verifySubscription({ purchaseToken }) {
   }
   const data = JSON.parse(res.body);
   const state = data.subscriptionState;
-  const active = state === 'SUBSCRIPTION_STATE_ACTIVE'
-    || state === 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD';
-  return { active, state, raw: data };
+  const expiryMs = latestExpiryMs(data);
+  return { entitled: isEntitled(state, expiryMs), state, expiryMs, raw: data };
 }
 
-module.exports = { isConfigured, configError, buildAssertion, verifySubscription };
+module.exports = {
+  isConfigured, configError, buildAssertion, verifySubscription,
+  isEntitled, latestExpiryMs,
+};

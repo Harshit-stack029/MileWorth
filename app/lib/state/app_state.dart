@@ -159,8 +159,14 @@ class AppState extends ChangeNotifier {
   /// "verify your email" banner disappears.
   Future<void> verifyEmail(String token) async {
     final res = await _api.post('/auth/verify-email', {'token': token.trim()});
-    user = AppUser.fromJson(res['user']);
-    notifyListeners();
+    // The endpoint omits the user object when the email was already verified
+    // (it no longer echoes account data on that path); fall back to /auth/me.
+    if (res is Map && res['user'] != null) {
+      user = AppUser.fromJson(res['user']);
+      notifyListeners();
+    } else {
+      await refreshUser();
+    }
   }
 
   /// Re-fetch the current user (e.g. to pick up server-side verification).
@@ -316,6 +322,20 @@ class AppState extends ChangeNotifier {
     user = AppUser.fromJson(res['user']);
     notifyListeners();
     return user?.isSubscribed ?? false;
+  }
+
+  /// Re-verify the subscription with the backend and refresh the local user.
+  /// Catches renewals, cancellations and lapses (the server re-checks with
+  /// Google when the cached period has ended). Best-effort: a transient failure
+  /// leaves the cached status untouched.
+  Future<void> refreshSubscription() async {
+    try {
+      final res = await _api.get('/billing/status');
+      user = AppUser.fromJson(res['user']);
+      notifyListeners();
+    } on ApiException {
+      // Keep the last-known status if the server can't be reached right now.
+    }
   }
 
   Future<void> updateSettings({

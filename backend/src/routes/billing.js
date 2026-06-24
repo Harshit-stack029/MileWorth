@@ -7,5 +7,6 @@ const router = express.Router();
 router.use(auth);
 
 router.post('/verify', ctrl.verify);
+router.get('/status', ctrl.status);
 
 module.exports = router;

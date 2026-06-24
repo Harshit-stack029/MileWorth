@@ -153,7 +153,14 @@ class _TripRouteMapState extends State<_TripRouteMap> {
       controller.moveCamera(CameraUpdate.newLatLngZoom(points.first, 14));
       return;
     }
-    controller.moveCamera(CameraUpdate.newLatLngBounds(_boundsOf(points), 32));
+    // newLatLngBounds throws if the map view hasn't been laid out yet ("map
+    // size can't be 0"). Guard so a slow first frame can't crash the screen;
+    // fall back to centering on the route start.
+    try {
+      controller.moveCamera(CameraUpdate.newLatLngBounds(_boundsOf(points), 32));
+    } catch (_) {
+      controller.moveCamera(CameraUpdate.newLatLngZoom(points.first, 13));
+    }
   }
 
   @override

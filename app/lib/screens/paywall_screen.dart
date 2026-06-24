@@ -113,7 +113,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
             ),
           ),
           TextButton(
-            onPressed: pending ? null : () => billing.restore(),
+            onPressed: pending
+                ? null
+                : () async {
+                    await billing.restore();
+                    // Reconcile with the server so a restored/renewed entitlement
+                    // (or a lapse) is reflected even if no purchase event fires.
+                    if (context.mounted) {
+                      await context.read<AppState>().refreshSubscription();
+                    }
+                  },
             child: const Text('Restore purchase'),
           ),
           const SizedBox(height: 8),

@@ -7,6 +7,7 @@ const env = require('../config/env');
 const asyncHandler = require('../utils/asyncHandler');
 const mailer = require('../utils/mailer');
 const tokens = require('../utils/authTokens');
+const { findUserWithToken, reconcileSubscription } = require('../utils/subscription');
 
 function signToken(user) {
   return jwt.sign({}, env.jwtSecret, {
@@ -23,11 +24,12 @@ const register = asyncHandler(async (req, res) => {
   if (password.length < 8) {
     return res.status(400).json({ error: 'password must be at least 8 characters' });
   }
-  const existing = await User.findOne({ email: email.toLowerCase() });
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existing = await User.findOne({ email: normalizedEmail });
   if (existing) {
     return res.status(409).json({ error: 'An account with that email already exists' });
   }
-  const user = new User({ email });
+  const user = new User({ email: normalizedEmail });
   await user.setPassword(password);
   await user.save();
   await sendVerificationEmail(user);
@@ -67,7 +69,12 @@ const verifyEmail = asyncHandler(async (req, res) => {
   const user = userId ? await User.findById(userId) : null;
   if (!user) return res.status(400).json({ error: 'Invalid or expired link' });
 
-  if (user.emailVerified) return res.json({ user: user.toPublicJSON() });
+  // Already verified: the signing secret has since rotated (it folds in the
+  // verified flag), so we can't re-verify the signature — and needn't. Return a
+  // generic confirmation with NO account data: echoing toPublicJSON() here would
+  // leak a victim's email/subscription to anyone forging an unsigned token with
+  // their (guessable) id, since decodeSubject does not check the signature.
+  if (user.emailVerified) return res.json({ verified: true });
 
   try {
     tokens.verifyEmailVerifyToken(token, user);
@@ -77,7 +84,9 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
   user.emailVerified = true;
   await user.save();
-  return res.json({ user: user.toPublicJSON() });
+  // The caller proved possession of a validly-signed token, so returning their
+  // own user object is safe.
+  return res.json({ verified: true, user: user.toPublicJSON() });
 });
 
 const login = asyncHandler(async (req, res) => {
@@ -85,7 +94,7 @@ const login = asyncHandler(async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: 'email and password are required' });
   }
-  const user = await User.findOne({ email: email.toLowerCase() });
+  const user = await User.findOne({ email: String(email).trim().toLowerCase() });
   if (!user || !(await user.verifyPassword(password))) {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
@@ -93,8 +102,12 @@ const login = asyncHandler(async (req, res) => {
 });
 
 const me = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.userId);
+  const user = await findUserWithToken(req.user.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
+  // Lapse/renew the subscription if the cached period has ended, so a stale
+  // 'active' can't keep granting Pro after the user stops paying.
+  const changed = await reconcileSubscription(user);
+  if (changed) await user.save();
   return res.json({ user: user.toPublicJSON() });
 });
 
@@ -130,7 +143,7 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
     message: 'If an account exists for that email, a reset link is on its way.',
   };
 
-  const user = await User.findOne({ email: String(email).toLowerCase() });
+  const user = await User.findOne({ email: String(email).trim().toLowerCase() });
   if (!user) return res.json(generic);
 
   const token = tokens.signPasswordResetToken(user);
