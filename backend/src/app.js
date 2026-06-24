@@ -19,6 +19,8 @@ app.use(cors());
 // base64) so large receipts hit the controller's friendly 413 instead of a
 // confusing low-level parser error. Keep in sync with MAX_RECEIPT_CHARS.
 app.use(express.json({ limit: '3mb' }));
+// The emailed password-reset form posts urlencoded; everything else is JSON.
+app.use(express.urlencoded({ extended: false }));
 if (env.nodeEnv !== 'test') app.use(morgan('dev'));
 
 // Health + deployment self-check. `env` and the *_configured booleans let you
