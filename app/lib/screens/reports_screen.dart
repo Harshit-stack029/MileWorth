@@ -8,7 +8,6 @@ import 'package:share_plus/share_plus.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
-import 'paywall_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -60,14 +59,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _export(String format) async {
     final state = context.read<AppState>();
-    // Paywall at peak perceived value: exporting an accountant-ready report.
-    if (state.user?.isSubscribed != true) {
-      final upgraded = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => const PaywallScreen()),
-      );
-      if (upgraded != true) return;
-    }
-    if (!mounted) return;
     setState(() => _exporting = true);
     try {
       final bytes = await state.downloadReport(
@@ -139,24 +130,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _exporting ? null : () => _export('pdf'),
-                  icon: const Icon(Icons.picture_as_pdf),
-                  label: const Text('Share PDF'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _exporting ? null : () => _export('csv'),
-                  icon: const Icon(Icons.table_chart_outlined),
-                  label: const Text('Export CSV'),
-                ),
-              ),
-            ],
+          FilledButton.icon(
+            onPressed: _exporting ? null : () => _export('csv'),
+            icon: const Icon(Icons.table_chart_outlined),
+            label: const Text('Share CSV report'),
           ),
           if (_exporting)
             const Padding(

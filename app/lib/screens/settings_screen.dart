@@ -3,9 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/auto_trip_detector.dart';
 import '../state/app_state.dart';
-import '../theme.dart';
 import '../utils/format.dart';
-import 'paywall_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -18,26 +16,6 @@ class SettingsScreen extends StatelessWidget {
     return ListView(
       children: [
         if (user != null) ...[
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: Text(user.email),
-            subtitle: Text(user.isSubscribed ? 'Pro subscriber' : 'Free plan'),
-          ),
-          if (!user.isSubscribed)
-            Card(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: ListTile(
-                leading: const Icon(Icons.workspace_premium, color: AppColors.primary),
-                title: const Text('Upgrade to Pro'),
-                subtitle: const Text('Unlimited tracking, reports, insights'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PaywallScreen()),
-                ),
-              ),
-            ),
-          const Divider(),
           ListTile(
             leading: const Icon(Icons.attach_money),
             title: const Text('Mileage rate'),
@@ -59,90 +37,22 @@ class SettingsScreen extends StatelessWidget {
             onChanged: (v) =>
                 state.updateSettings(classifyWeekendsAsPersonal: v),
           ),
+          const Divider(),
         ],
         const AboutListTile(
           icon: Icon(Icons.info_outline),
           applicationName: 'MileWorth',
-          applicationVersion: '0.1.0 (Sprint 1)',
+          applicationVersion: '1.0.0',
           aboutBoxChildren: [
             Text(
-              'Deduction figures are estimates only and not tax advice. '
-              'Confirm with a qualified accountant.',
+              'Your trips and expenses are stored only on this device. '
+              'Deduction figures are estimates only and not tax advice — '
+              'confirm with a qualified accountant.',
             ),
           ],
         ),
-        ListTile(
-          leading: const Icon(Icons.logout, color: Colors.red),
-          title: const Text('Sign out', style: TextStyle(color: Colors.red)),
-          onTap: state.signOut,
-        ),
-        if (user != null)
-          ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text('Delete account',
-                style: TextStyle(color: Colors.red)),
-            subtitle: const Text(
-              'Permanently erase your account, trips, expenses and receipts.',
-            ),
-            onTap: () => _confirmDeleteAccount(context, state),
-          ),
       ],
     );
-  }
-
-  Future<void> _confirmDeleteAccount(BuildContext context, AppState state) async {
-    final confirm = TextEditingController();
-    final messenger = ScaffoldMessenger.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'This permanently deletes your account and all of your trips, '
-              'expenses and receipts. This cannot be undone.\n\n'
-              'Type DELETE to confirm.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: confirm,
-              autocorrect: false,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'DELETE',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: confirm,
-            builder: (_, value, _) => FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: value.text.trim().toUpperCase() == 'DELETE'
-                  ? () => Navigator.pop(ctx, true)
-                  : null,
-              child: const Text('Delete forever'),
-            ),
-          ),
-        ],
-      ),
-    );
-    confirm.dispose();
-    if (ok != true) return;
-    try {
-      await state.deleteAccount();
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Could not delete account: $e')),
-      );
-    }
   }
 
   Future<void> _editRate(BuildContext context, AppState state) async {

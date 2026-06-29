@@ -3,16 +3,14 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/home_shell.dart';
-import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auto_trip_detector.dart';
-import 'services/subscription_service.dart';
 import 'services/trip_tracker.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 
 void main() {
-  // Hold the native splash until the app has bootstrapped (see _AuthGate).
+  // Hold the native splash until the app has bootstrapped (see _AppGate).
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
   runApp(
@@ -26,21 +24,11 @@ void main() {
             ctx.read<TripTracker>(),
             onTripComplete: (payload) => ctx.read<AppState>().addTrip(payload),
           )..load(),
-          // Once signed in, salvage any drive interrupted by an app kill.
+          // Once the app is ready, salvage any drive interrupted by an app kill.
           update: (_, appState, _, detector) {
-            if (appState.status == AuthStatus.signedIn) detector!.maybeRecover();
+            if (appState.status == AppStatus.ready) detector!.maybeRecover();
             return detector!;
           },
-        ),
-        // Billing: verifies purchases through AppState -> backend.
-        ChangeNotifierProxyProvider<AppState, SubscriptionService>(
-          create: (ctx) => SubscriptionService(
-            onVerify: (token, productId) => ctx.read<AppState>().verifySubscription(
-                  purchaseToken: token,
-                  productId: productId,
-                ),
-          )..init(),
-          update: (_, _, service) => service!,
         ),
       ],
       child: const MileWorthApp(),
@@ -57,31 +45,32 @@ class MileWorthApp extends StatelessWidget {
       title: 'MileWorth',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: const _AuthGate(),
+      home: const _AppGate(),
     );
   }
 }
 
-/// Routes between login and the main app based on auth status.
-class _AuthGate extends StatelessWidget {
-  const _AuthGate();
+/// Shows first-run onboarding, then the main app. There is no login — the app
+/// is local-only and always usable.
+class _AppGate extends StatelessWidget {
+  const _AppGate();
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final status = state.status;
-    // Once auth is resolved, hand off from the native splash to the UI.
-    if (status != AuthStatus.unknown) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => FlutterNativeSplash.remove());
+    // Once bootstrap is resolved, hand off from the native splash to the UI.
+    if (state.status != AppStatus.unknown) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => FlutterNativeSplash.remove());
     }
-    switch (status) {
-      case AuthStatus.unknown:
+    switch (state.status) {
+      case AppStatus.unknown:
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      case AuthStatus.signedOut:
-        // First launch: show onboarding (incl. location priming) before login.
-        return state.onboardingSeen ? const LoginScreen() : const OnboardingScreen();
-      case AuthStatus.signedIn:
-        return const HomeShell();
+      case AppStatus.ready:
+        // First launch: show onboarding (incl. location priming) before the app.
+        return state.onboardingSeen
+            ? const HomeShell()
+            : const OnboardingScreen();
     }
   }
 }

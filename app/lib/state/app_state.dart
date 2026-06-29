@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,96 +8,48 @@ import '../models/insights.dart';
 import '../models/summary.dart';
 import '../models/trip.dart';
 import '../models/user.dart';
-import '../services/api_client.dart';
-import '../services/outbox.dart';
-import '../services/storage.dart';
+import '../services/local_store.dart';
 
-enum AuthStatus { unknown, signedOut, signedIn }
+/// App lifecycle: [unknown] while bootstrapping, then [ready]. There is no
+/// sign-in step — the app is local-only and always usable.
+enum AppStatus { unknown, ready }
 
-/// Single source of truth for auth + trip data. Backed by [ApiClient].
+/// Single source of truth for trips, expenses and preferences. Backed entirely
+/// by on-device storage ([LocalStore]); there is no account or network.
 class AppState extends ChangeNotifier {
-  AppState({ApiClient? api, TokenStorage? storage, Outbox? outbox})
-      : _api = api ?? ApiClient(),
-        _storage = storage ?? TokenStorage(),
-        _outbox = outbox ?? Outbox() {
-    // Sign out automatically when the server rejects our token mid-session.
-    _api.onUnauthorized = _handleSessionExpired;
-  }
+  AppState({LocalStore? store}) : _store = store ?? LocalStore();
 
-  bool _handlingExpiry = false;
+  final LocalStore _store;
 
-  final ApiClient _api;
-  final TokenStorage _storage;
-  final Outbox _outbox;
-
-  AuthStatus status = AuthStatus.unknown;
-  AppUser? user;
+  AppStatus status = AppStatus.unknown;
+  AppUser? user; // local preferences (rate / currency / weekend rule)
   List<Trip> trips = [];
   List<Expense> expenses = [];
   TripSummary summary = TripSummary.empty();
-  int pendingSync = 0;
   bool loading = false;
   bool onboardingSeen = false;
   String? error;
-  // One-shot message shown on the login screen after an automatic sign-out
-  // (e.g. session expiry). Consumed + cleared by the UI.
-  String? sessionMessage;
 
   static const _onboardingKey = 'onboarding_seen';
-  static const _serverUrlKey = 'server_url';
 
-  /// The backend URL currently in use (compile-time default unless overridden).
-  String get serverUrl => _api.baseUrl;
-
-  /// Override the backend URL at runtime (for test builds / switching servers).
-  Future<void> setServerUrl(String url) async {
-    _api.setBaseUrl(url);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_serverUrlKey, _api.baseUrl);
-    notifyListeners();
+  // Monotonic counter so trips/expenses created in the same microsecond still
+  // get distinct ids.
+  int _idCounter = 0;
+  String _newId() {
+    _idCounter++;
+    return '${DateTime.now().microsecondsSinceEpoch}_$_idCounter';
   }
 
-  /// Called once at startup: restore a saved session if present.
+  double get _rate => user?.mileageRate ?? LocalStore.defaultMileageRate;
+
+  /// Called once at startup: load preferences + data from the device.
   Future<void> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     onboardingSeen = prefs.getBool(_onboardingKey) ?? false;
-    final savedUrl = prefs.getString(_serverUrlKey);
-    if (savedUrl != null && savedUrl.isNotEmpty) _api.setBaseUrl(savedUrl);
-    final token = await _storage.read();
-    if (token == null) {
-      status = AuthStatus.signedOut;
-      notifyListeners();
-      return;
-    }
-    _api.setToken(token);
-    try {
-      final res = await _api.get('/auth/me');
-      user = AppUser.fromJson(res['user']);
-      status = AuthStatus.signedIn;
-      notifyListeners();
-      await refresh();
-    } catch (_) {
-      await signOut();
-    }
-  }
-
-  Future<void> _authenticate(String path, String email, String password) async {
-    _setLoading(true);
-    try {
-      final res = await _api.post(path, {'email': email, 'password': password});
-      final token = res['token'] as String;
-      await _storage.write(token);
-      _api.setToken(token);
-      user = AppUser.fromJson(res['user']);
-      status = AuthStatus.signedIn;
-      error = null;
-      _setLoading(false);
-      await refresh();
-    } on ApiException catch (e) {
-      error = e.message;
-      _setLoading(false);
-      rethrow;
-    }
+    await _loadSettings();
+    await _reload();
+    status = AppStatus.ready;
+    notifyListeners();
   }
 
   /// Mark first-run onboarding as completed so it never shows again.
@@ -106,251 +60,246 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String email, String password) =>
-      _authenticate('/auth/login', email, password);
-
-  /// Request a password-reset email. Returns a dev-only token (non-production
-  /// backends echo it back so the flow is testable without a mail provider);
-  /// in production this is always null and the user gets the token by email.
-  Future<String?> requestPasswordReset(String email) async {
-    final res = await _api.post('/auth/forgot-password', {'email': email.trim()});
-    return res is Map ? res['devToken'] as String? : null;
+  Future<void> _loadSettings() async {
+    final s = await _store.readSettings();
+    user = AppUser(
+      mileageRate: (s['mileageRate'] as num).toDouble(),
+      currency: s['currency'] as String,
+      classifyWeekendsAsPersonal: s['classifyWeekendsAsPersonal'] as bool,
+    );
   }
 
-  /// Complete a password reset with the emailed token; signs the user in.
-  Future<void> resetPassword(String token, String password) async {
-    final res = await _api.post('/auth/reset-password', {
-      'token': token.trim(),
-      'password': password,
-    });
-    final t = res['token'] as String;
-    await _storage.write(t);
-    _api.setToken(t);
-    user = AppUser.fromJson(res['user']);
-    status = AuthStatus.signedIn;
-    error = null;
-    notifyListeners();
-    await refresh();
+  /// Per-trip deduction: business drives earn distance × rate; everything else
+  /// is zero. Computed on read so a rate change reprices history instantly.
+  Trip _tripFromMap(Map<String, dynamic> m) {
+    final category = m['category'] as String? ?? 'uncategorized';
+    final distance = (m['distance'] as num?)?.toDouble() ?? 0;
+    final deduction = category == 'business' ? distance * _rate : 0.0;
+    return Trip.fromJson({...m, 'deductionValue': deduction});
   }
 
-  Future<void> register(String email, String password) =>
-      _authenticate('/auth/register', email, password);
-
-  Future<void> signOut() async {
-    await _storage.clear();
-    _api.setToken(null);
-    user = null;
-    trips = [];
-    expenses = [];
-    summary = TripSummary.empty();
-    pendingSync = 0;
-    status = AuthStatus.signedOut;
-    notifyListeners();
+  Future<void> _reload() async {
+    final tripMaps = await _store.readTrips();
+    trips = tripMaps.map(_tripFromMap).toList()
+      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+    final expenseMaps = await _store.readExpenses();
+    expenses = expenseMaps.map(Expense.fromJson).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    _recomputeSummary();
   }
 
-  /// Re-send the email-verification message to the signed-in user. Returns a
-  /// dev-only token (non-production echoes it back) or null in production.
-  Future<String?> resendVerification() async {
-    final res = await _api.post('/auth/me/resend-verification', {});
-    return res is Map ? res['devToken'] as String? : null;
-  }
-
-  /// Confirm an email-verification token, then refresh the local user so the
-  /// "verify your email" banner disappears.
-  Future<void> verifyEmail(String token) async {
-    final res = await _api.post('/auth/verify-email', {'token': token.trim()});
-    // The endpoint omits the user object when the email was already verified
-    // (it no longer echoes account data on that path); fall back to /auth/me.
-    if (res is Map && res['user'] != null) {
-      user = AppUser.fromJson(res['user']);
-      notifyListeners();
-    } else {
-      await refreshUser();
+  void _recomputeSummary() {
+    double totalMiles = 0, totalDeductions = 0;
+    int business = 0, uncategorized = 0;
+    for (final t in trips) {
+      totalMiles += t.distance;
+      if (t.category == 'business') business++;
+      if (t.category == 'uncategorized') uncategorized++;
+      totalDeductions += t.deductionValue;
     }
+    summary = TripSummary(
+      totalMiles: totalMiles,
+      totalTrips: trips.length,
+      businessTrips: business,
+      uncategorizedTrips: uncategorized,
+      totalDeductions: totalDeductions,
+    );
   }
 
-  /// Re-fetch the current user (e.g. to pick up server-side verification).
-  Future<void> refreshUser() async {
-    final res = await _api.get('/auth/me');
-    user = AppUser.fromJson(res['user']);
-    notifyListeners();
-  }
-
-  /// Invoked by [ApiClient] when an authenticated request returns 401. Signs the
-  /// user out once and surfaces a "session expired" message. Guarded against
-  /// re-entrancy when several in-flight requests all 401 at once.
-  void _handleSessionExpired() {
-    if (_handlingExpiry || status != AuthStatus.signedIn) return;
-    _handlingExpiry = true;
-    signOut().then((_) {
-      sessionMessage = 'Your session expired. Please sign in again.';
-      _handlingExpiry = false;
-      notifyListeners();
-    });
-  }
-
-  /// Read-and-clear the one-shot session message.
-  String? takeSessionMessage() {
-    final msg = sessionMessage;
-    sessionMessage = null;
-    return msg;
-  }
-
-  /// Permanently delete the account and all server-side data, then sign out.
-  /// Required for Play Store compliance. Throws [ApiException] on failure so the
-  /// UI can keep the user signed in and show the error.
-  Future<void> deleteAccount() async {
-    await _api.delete('/auth/me');
-    await signOut();
-  }
-
-  /// Reload trips + dashboard summary. Also flushes any offline queue first.
+  /// Reload everything from disk (wired to pull-to-refresh).
   Future<void> refresh() async {
     _setLoading(true);
-    try {
-      await flushOutbox();
-      final tripsRes = await _api.get('/trips');
-      trips = (tripsRes['trips'] as List)
-          .map((j) => Trip.fromJson(j as Map<String, dynamic>))
-          .toList();
-      final summaryRes = await _api.get('/trips/summary');
-      summary = TripSummary.fromJson(summaryRes['summary']);
-      error = null;
-    } on ApiException catch (e) {
-      error = e.message;
-    } finally {
-      _setLoading(false);
-    }
+    await _reload();
+    _setLoading(false);
   }
 
-  /// Create a trip. If the device is offline the write is queued and synced
-  /// later (FR-13). Validation/HTTP errors (ApiException) are NOT queued —
-  /// they're surfaced to the caller.
+  bool _isWeekend(DateTime dt) {
+    final d = dt.toLocal().weekday;
+    return d == DateTime.saturday || d == DateTime.sunday;
+  }
+
+  /// Create a trip. [payload] uses the same keys the GPS tracker / manual form
+  /// already produce (startTime, endTime, distance, category, optional coords +
+  /// routePolyline).
   Future<void> addTrip(Map<String, dynamic> payload) async {
-    try {
-      await _api.post('/trips', payload);
-    } on ApiException {
-      rethrow;
-    } catch (_) {
-      await _outbox.enqueue('/trips', payload);
-      pendingSync = await _outbox.count();
-      notifyListeners();
-      return;
+    final maps = await _store.readTrips();
+    var category = payload['category'] as String? ?? 'uncategorized';
+    // Apply the "weekends are personal" rule to auto-detected (uncategorized)
+    // drives only; a manually-chosen category is always respected.
+    if (category == 'uncategorized' &&
+        (user?.classifyWeekendsAsPersonal ?? false) &&
+        _isWeekend(DateTime.parse(payload['startTime'] as String))) {
+      category = 'personal';
     }
+    maps.add({...payload, '_id': _newId(), 'category': category});
+    await _store.writeTrips(maps);
     await refresh();
   }
 
-  /// Push any queued offline writes. Safe to call often; no-op when empty.
-  Future<void> flushOutbox() async {
-    final sent = await _outbox.flush((path, body) => _api.post(path, body));
-    pendingSync = await _outbox.count();
-    if (sent > 0) notifyListeners();
-  }
-
-  /// Reclassify a trip business <-> personal (FR-3).
+  /// Reclassify a trip business <-> personal <-> uncategorized.
   Future<void> setCategory(Trip trip, String category) async {
-    await _api.patch('/trips/${trip.id}', {'category': category});
+    final maps = await _store.readTrips();
+    for (final m in maps) {
+      if (m['_id'] == trip.id) m['category'] = category;
+    }
+    await _store.writeTrips(maps);
     await refresh();
   }
 
   Future<void> deleteTrip(Trip trip) async {
-    await _api.delete('/trips/${trip.id}');
+    final maps = await _store.readTrips();
+    maps.removeWhere((m) => m['_id'] == trip.id);
+    await _store.writeTrips(maps);
     await refresh();
   }
 
-  // --- Expenses (Sprint 3) ---
+  // --- Expenses ---
 
   Future<void> fetchExpenses() async {
-    final res = await _api.get('/expenses');
-    expenses = (res['expenses'] as List)
-        .map((j) => Expense.fromJson(j as Map<String, dynamic>))
-        .toList();
+    await _reload();
     notifyListeners();
   }
 
   Future<void> addExpense(Map<String, dynamic> payload) async {
-    await _api.post('/expenses', payload);
-    await fetchExpenses();
+    final maps = await _store.readExpenses();
+    maps.add({...payload, '_id': _newId()});
+    await _store.writeExpenses(maps);
+    await _reload();
+    notifyListeners();
   }
 
   Future<void> deleteExpense(Expense expense) async {
-    await _api.delete('/expenses/${expense.id}');
-    await fetchExpenses();
+    final maps = await _store.readExpenses();
+    maps.removeWhere((m) => m['_id'] == expense.id);
+    await _store.writeExpenses(maps);
+    await _reload();
+    notifyListeners();
   }
 
-  // --- Reports (Sprint 3) ---
+  // --- Reports ---
 
   /// Totals for a date range, shown before exporting.
   Future<Map<String, dynamic>> reportSummary(DateTime from, DateTime to) async {
-    final res = await _api.get(
-      '/reports/summary?from=${_d(from)}&to=${_d(to)}',
-    );
-    return Map<String, dynamic>.from(res['summary'] as Map);
+    final lo = DateTime(from.year, from.month, from.day);
+    final hi = DateTime(to.year, to.month, to.day, 23, 59, 59);
+    bool inRange(DateTime d) {
+      final l = d.toLocal();
+      return !l.isBefore(lo) && !l.isAfter(hi);
+    }
+
+    int totalTrips = 0, businessTrips = 0;
+    double businessMiles = 0, totalDeductions = 0;
+    for (final t in trips) {
+      if (!inRange(t.startTime)) continue;
+      totalTrips++;
+      totalDeductions += t.deductionValue;
+      if (t.category == 'business') {
+        businessTrips++;
+        businessMiles += t.distance;
+      }
+    }
+    double totalExpenses = 0;
+    for (final e in expenses) {
+      if (!inRange(e.date)) continue;
+      totalExpenses += e.amount;
+    }
+    return {
+      'totalTrips': totalTrips,
+      'businessTrips': businessTrips,
+      'businessMiles': businessMiles,
+      'totalExpenses': totalExpenses,
+      'totalDeductions': totalDeductions,
+    };
   }
 
-  /// Download a generated report. format = 'pdf' | 'csv'.
+  /// Build a CSV report for the date range and return its bytes (the reports
+  /// screen writes them to a temp file and shares it). Local builds export CSV
+  /// only — PDF generation needed a backend.
   Future<Uint8List> downloadReport({
     required String format,
     required DateTime from,
     required DateTime to,
-  }) {
-    return _api.getBytes('/reports?format=$format&from=${_d(from)}&to=${_d(to)}');
+  }) async {
+    final lo = DateTime(from.year, from.month, from.day);
+    final hi = DateTime(to.year, to.month, to.day, 23, 59, 59);
+    bool inRange(DateTime d) {
+      final l = d.toLocal();
+      return !l.isBefore(lo) && !l.isAfter(hi);
+    }
+
+    String d(DateTime t) => t.toLocal().toIso8601String().substring(0, 10);
+    final rows = <List<String>>[
+      ['Type', 'Date', 'Category/Vendor', 'Distance (mi)', 'Amount/Deduction'],
+    ];
+    for (final t in trips.where((t) => inRange(t.startTime))) {
+      rows.add([
+        'Trip',
+        d(t.startTime),
+        t.category,
+        t.distance.toStringAsFixed(2),
+        t.deductionValue.toStringAsFixed(2),
+      ]);
+    }
+    for (final e in expenses.where((e) => inRange(e.date))) {
+      rows.add([
+        'Expense',
+        d(e.date),
+        e.vendor ?? e.category ?? 'Expense',
+        '',
+        e.amount.toStringAsFixed(2),
+      ]);
+    }
+    final csv = rows.map((r) => r.map(_csvCell).join(',')).join('\r\n');
+    return Uint8List.fromList(utf8.encode(csv));
   }
 
-  String _d(DateTime d) => d.toIso8601String().substring(0, 10);
+  String _csvCell(String value) {
+    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+      return '"${value.replaceAll('"', '""')}"';
+    }
+    return value;
+  }
 
-  // --- Insights (Sprint 4) ---
+  // --- Insights ---
 
   Future<Insights> fetchInsights() async {
-    final res = await _api.get('/trips/insights');
-    return Insights.fromJson(Map<String, dynamic>.from(res['insights'] as Map));
-  }
-
-  // --- Subscription (Sprint 4) ---
-
-  /// Activate Pro after a Play Billing purchase. In production the backend
-  /// verifies [purchaseToken] with Google before flipping the status.
-  /// Returns true if the account is now subscribed.
-  Future<bool> verifySubscription({
-    required String purchaseToken,
-    required String productId,
-  }) async {
-    final res = await _api.post('/billing/verify', {
-      'purchaseToken': purchaseToken,
-      'productId': productId,
-    });
-    user = AppUser.fromJson(res['user']);
-    notifyListeners();
-    return user?.isSubscribed ?? false;
-  }
-
-  /// Re-verify the subscription with the backend and refresh the local user.
-  /// Catches renewals, cancellations and lapses (the server re-checks with
-  /// Google when the cached period has ended). Best-effort: a transient failure
-  /// leaves the cached status untouched.
-  Future<void> refreshSubscription() async {
-    try {
-      final res = await _api.get('/billing/status');
-      user = AppUser.fromJson(res['user']);
-      notifyListeners();
-    } on ApiException {
-      // Keep the last-known status if the server can't be reached right now.
+    final counts = <String, int>{};
+    final miles = <String, double>{};
+    final values = <String, double>{};
+    for (final t in trips) {
+      counts[t.category] = (counts[t.category] ?? 0) + 1;
+      miles[t.category] = (miles[t.category] ?? 0) + t.distance;
+      values[t.category] = (values[t.category] ?? 0) + t.deductionValue;
     }
+    final byCategory = counts.keys
+        .map((c) => CategoryStat(
+              category: c,
+              count: counts[c]!,
+              miles: miles[c]!,
+              value: values[c]!,
+            ))
+        .toList()
+      ..sort((a, b) => b.count.compareTo(a.count));
+    // Named-location ranking was a server feature; the screen handles an empty
+    // list with a helpful hint.
+    return Insights(byCategory: byCategory, topLocations: const []);
   }
+
+  // --- Settings ---
 
   Future<void> updateSettings({
     double? mileageRate,
     String? currency,
     bool? classifyWeekendsAsPersonal,
   }) async {
-    final res = await _api.patch('/auth/me/settings', {
-      'mileageRate': ?mileageRate,
-      'currency': ?currency,
-      'classifyWeekendsAsPersonal': ?classifyWeekendsAsPersonal,
-    });
-    user = AppUser.fromJson(res['user']);
+    await _store.writeSettings(
+      mileageRate: mileageRate,
+      currency: currency,
+      classifyWeekendsAsPersonal: classifyWeekendsAsPersonal,
+    );
+    await _loadSettings();
+    await _reload(); // deduction totals depend on the rate
     notifyListeners();
-    await refresh(); // deduction totals depend on the rate
   }
 
   void _setLoading(bool v) {

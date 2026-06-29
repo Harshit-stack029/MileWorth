@@ -58,7 +58,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await tracker.ensureBackgroundPermission();
     }
     await appState.completeOnboarding();
-    // AuthGate rebuilds and routes to login once onboarding is marked seen.
+    // The app gate rebuilds and routes into the home shell once onboarding is
+    // marked seen.
   }
 
   void _next() {
