@@ -5,6 +5,8 @@ import '../services/trip_tracker.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../utils/location_feedback.dart';
+import '../widgets/live_trip_map.dart';
 import 'home_shell.dart';
 import 'insights_screen.dart';
 
@@ -23,6 +25,14 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const _GpsStatusBanner(),
+          // While a drive is recording, show it drawing itself.
+          if (context.watch<TripTracker>().tracking) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: const SizedBox(height: 200, child: LiveTripMap()),
+            ),
+          ],
           const SizedBox(height: 16),
           // Hero deduction value — the headline number.
           Card(
@@ -186,11 +196,10 @@ class _GpsStatusBanner extends StatelessWidget {
       await appState.addTrip(payload);
       messenger.showSnackBar(const SnackBar(content: Text('Trip saved')));
     } else {
-      final ok = await tracker.start();
-      if (!ok) {
-        messenger.showSnackBar(const SnackBar(
-            content: Text('Location permission needed to track drives')));
-      }
+      final access = await tracker.start();
+      // Surfaces the specific reason (GPS off / denied / blocked) and, where the
+      // user cannot fix it from a prompt, a button into the right settings page.
+      showLocationAccessMessage(messenger, access);
     }
   }
 }

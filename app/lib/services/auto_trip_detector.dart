@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'location_access.dart';
 import 'trip_tracker.dart';
 
 /// Watches for the start of a drive and automatically begins/ends recording,
@@ -58,11 +59,13 @@ class AutoTripDetector extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> setEnabled(bool value) async {
+  /// Returns [LocationAccess.granted] when auto-tracking is now on, or the
+  /// reason it could not be enabled so the UI can offer a way to fix it.
+  Future<LocationAccess> setEnabled(bool value) async {
     if (value) {
       // Background auto-detection needs "Allow all the time".
-      final ok = await _tracker.ensureBackgroundPermission();
-      if (!ok) return false;
+      final access = await _tracker.ensureBackgroundPermission();
+      if (!access.isGranted) return access;
       await _startSentinel();
     } else {
       await _stopSentinel();
@@ -72,7 +75,7 @@ class AutoTripDetector extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefsKey, value);
     notifyListeners();
-    return true;
+    return LocationAccess.granted;
   }
 
   Future<void> _startSentinel() async {
@@ -139,7 +142,7 @@ class AutoTripDetector extends ChangeNotifier {
     await _stopSentinel();
     _tracker.onAutoStop = _finishDrive; // tracker fires this after a stop
     final started = await _tracker.start();
-    if (!started) {
+    if (!started.isGranted) {
       // Couldn't start (permission/service revoked) — fall back to sentinel.
       _recording = false;
       if (enabled) await _startSentinel();

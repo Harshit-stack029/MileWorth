@@ -78,13 +78,24 @@ void _encodeValue(StringBuffer sb, int value) {
   sb.writeCharCode(v + 63);
 }
 
+// The encoding only ever emits ASCII '?'(63) through '~'(126). Anything outside
+// that range is not a polyline, so reject it instead of decoding it into junk
+// coordinates — without this check a string like "!!!not-a-polyline!!!" decodes
+// to plausible-looking points near (0,0) and gets drawn as a real route.
+const int _minPolylineCharCode = 63;
+const int _maxPolylineCharCode = 126;
+
 int _decodeValue(String s, int Function() getIndex, void Function(int) setIndex) {
   int index = getIndex();
   int result = 0;
   int shift = 0;
   int b;
   do {
-    b = s.codeUnitAt(index++) - 63;
+    final code = s.codeUnitAt(index++);
+    if (code < _minPolylineCharCode || code > _maxPolylineCharCode) {
+      throw const FormatException('invalid polyline character');
+    }
+    b = code - 63;
     result |= (b & 0x1f) << shift;
     shift += 5;
   } while (b >= 0x20);

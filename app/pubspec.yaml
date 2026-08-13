@@ -48,6 +48,9 @@ dependencies:
   image_picker: ^1.1.2
   share_plus: ^10.1.2
   path_provider: ^2.1.4
+  # Hands a trip's coordinates to the phone's maps app for turn-by-turn
+  # directions (see lib/utils/navigation_launcher.dart).
+  url_launcher: ^6.3.0
   # Render brand SVG logo in-app
   flutter_svg: ^2.0.10+1
   # Native splash runtime control (preserve/remove); generator config below

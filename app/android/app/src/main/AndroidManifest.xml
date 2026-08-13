@@ -64,5 +64,22 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Package visibility for the "Navigate" button. On Android 11+ an app
+             cannot see (or launch) another app's intents unless it declares them
+             here — without these, handing a destination to Google Maps fails
+             silently. `google.navigation` starts turn-by-turn; geo/https are the
+             fallbacks. See lib/utils/navigation_launcher.dart. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="google.navigation"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="geo"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>

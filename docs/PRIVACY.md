@@ -51,12 +51,21 @@ their privacy policies, not ours.
 
 ## Third-party services
 
+Two features reach the network. Both are on-demand, and neither sends us
+anything — we still receive no data at all.
+
 - **Google Maps** — the trip detail screen draws your recorded route on a map.
   Rendering that map requires the Google Maps SDK to contact Google's servers for
-  map tiles, which necessarily reveals the map area being viewed. This is the
-  only feature in the app that uses the network for your data, and it is governed
-  by [Google's Privacy Policy](https://policies.google.com/privacy). Your trip
-  list, expenses, and receipts are never sent to Google.
+  map tiles, which necessarily reveals the map area being viewed. Governed by
+  [Google's Privacy Policy](https://policies.google.com/privacy). Your trip list,
+  expenses, and receipts are never sent to Google.
+- **Navigation ("Navigate" button)** — when *you* tap Navigate, MileWorth hands
+  that single destination's coordinates to your phone's maps app (Google Maps on
+  Android, Apple Maps on iOS) so it can give you turn-by-turn directions. That
+  coordinate is shared with the maps app only at the moment you tap, it is
+  governed by that app's own privacy policy, and MileWorth sends nothing else —
+  not your trip history, not your other locations. If you never tap Navigate,
+  nothing is ever shared this way.
 
 ## Background location disclosure
 

@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/polyline.dart';
+import 'location_access.dart';
 
 /// Records a single drive: accumulates distance from the GPS stream and
 /// detects when the vehicle has stopped.
@@ -15,6 +16,9 @@ import '../utils/polyline.dart';
 /// real device). Fully-automatic background detection (activity recognition +
 /// Android foreground service) is the remaining piece — see [autoModeNote].
 class TripTracker extends ChangeNotifier {
+  /// Injectable so tests can drive permission outcomes without a device.
+  TripTracker({this._access = const LocationAccessService()});
+
   static const autoModeNote =
       'Automatic background start/stop needs an Android foreground service + '
       'activity recognition; foreground manual tracking is wired here first.';
@@ -42,36 +46,24 @@ class TripTracker extends ChangeNotifier {
   double? _startLat, _startLng, _lastLat, _lastLng;
   DateTime? _lastFixAt;
 
+  final LocationAccessService _access;
+
   double get distanceMiles => distanceMeters / 1609.344;
 
-  /// Ensures location services + permission. Returns false if unavailable so
-  /// the UI can prompt the user (we never silently fail to track).
-  Future<bool> ensurePermission() async {
-    if (!await Geolocator.isLocationServiceEnabled()) return false;
-    var perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      perm = await Geolocator.requestPermission();
-    }
-    return perm == LocationPermission.always ||
-        perm == LocationPermission.whileInUse;
-  }
+  /// Ensures location services + permission for foreground recording.
+  Future<LocationAccess> ensurePermission() => _access.requestForeground();
 
   /// Stricter check for background auto-detection: requires "Allow all the
-  /// time". Calling requestPermission again prompts the user to upgrade from
-  /// while-in-use to always on Android.
-  Future<bool> ensureBackgroundPermission() async {
-    if (!await Geolocator.isLocationServiceEnabled()) return false;
-    var perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied ||
-        perm == LocationPermission.whileInUse) {
-      perm = await Geolocator.requestPermission();
-    }
-    return perm == LocationPermission.always;
-  }
+  /// time".
+  Future<LocationAccess> ensureBackgroundPermission() =>
+      _access.requestBackground();
 
-  Future<bool> start() async {
-    if (tracking) return true;
-    if (!await ensurePermission()) return false;
+  /// Starts recording. Returns [LocationAccess.granted] on success, or the
+  /// specific reason it could not start so the UI can offer a way out.
+  Future<LocationAccess> start() async {
+    if (tracking) return LocationAccess.granted;
+    final access = await ensurePermission();
+    if (!access.isGranted) return access;
 
     _reset();
     tracking = true;
@@ -83,7 +75,7 @@ class TripTracker extends ChangeNotifier {
     ).listen(_onPosition);
 
     notifyListeners();
-    return true;
+    return LocationAccess.granted;
   }
 
   /// High-accuracy recording. On Android we attach a foreground-service

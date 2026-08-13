@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/auto_trip_detector.dart';
 import '../state/app_state.dart';
 import '../utils/format.dart';
+import '../utils/location_feedback.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -116,12 +117,10 @@ class _AutoTrackingToggle extends StatelessWidget {
       value: detector.enabled,
       onChanged: (v) async {
         final messenger = ScaffoldMessenger.of(context);
-        final ok = await detector.setEnabled(v);
-        if (!ok) {
-          messenger.showSnackBar(const SnackBar(
-            content: Text('Location permission is required for auto tracking'),
-          ));
-        }
+        final access = await detector.setEnabled(v);
+        // "Allow all the time" cannot be granted from a prompt on Android 11+,
+        // so the message carries a button into the right settings page.
+        showLocationAccessMessage(messenger, access);
       },
     );
   }

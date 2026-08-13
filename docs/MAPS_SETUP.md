@@ -50,7 +50,32 @@ Then run `cd ios && pod install` so the GoogleMaps pod is fetched.
 
 ## Notes
 
-- The detail map uses **lite mode** (a static, non-interactive snapshot) — it's
-  cheaper and avoids per-interaction map loads.
+- Maps appear in three places: the **trip detail** preview, the **fullscreen
+  route** view (tap the preview), and the **live map** shown on the dashboard
+  while a drive is recording.
+- The embedded previews deliberately have **gestures disabled** so they don't
+  swallow the scroll of the list they sit in. Pan/zoom lives in the fullscreen
+  view. (Lite mode is no longer used — it is Android-only, so it made the two
+  platforms behave differently, and it cannot show the live position.)
+- The blue **my-location dot** is only enabled once a permission check confirms
+  access; enabling it without permission throws at runtime.
 - Routes are downsampled to ≤1000 points before encoding to keep the stored
   polyline bounded on long drives.
+
+## Navigation ("Navigate" button)
+
+Turn-by-turn is delegated to the phone's maps app rather than done in-app — that
+avoids the paid Directions API and keeps routing off our infrastructure. See
+`app/lib/utils/navigation_launcher.dart`.
+
+- **Android** uses `google.navigation:q=lat,lng&mode=d`, which starts guidance
+  immediately in Google Maps. **iOS** uses `maps.apple.com`. Both fall back to a
+  `https://www.google.com/maps/dir/` link, which opens the Google Maps app when
+  installed and a browser otherwise.
+- **Android 11+ package visibility:** launching another app requires matching
+  `<intent>` entries under `<queries>` in `AndroidManifest.xml`. Without them the
+  launch fails **silently** — the button appears to do nothing. The `geo`,
+  `https`, and `google.navigation` schemes are already declared there; if you add
+  another target scheme, add it to `<queries>` too.
+- No API key is needed for navigation — it's a plain app hand-off, not an API
+  call, so it costs nothing and works without the Maps SDK key.
