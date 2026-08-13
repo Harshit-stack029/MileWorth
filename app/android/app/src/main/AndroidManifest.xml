@@ -1,7 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Required for ALL builds to reach the backend API. Previously only the
-         debug/profile manifests declared INTERNET, so release APKs shipped with
-         no network access. Declared here so every build type can make HTTP calls. -->
+    <!-- The app itself is local-only and sends no user data anywhere, but Google
+         Maps still needs the network to fetch tiles for the trip-route map.
+         Declared here (not only in the debug/profile manifests) so release APKs
+         actually get network access. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Location permissions (Sprint 2 auto-tracking).
          ACCESS_BACKGROUND_LOCATION must be requested separately AND justified in
@@ -17,7 +18,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
 
     <application
-        android:label="mileworth"
+        android:label="MileWorth"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- Google Maps API key. Value injected at build time from the

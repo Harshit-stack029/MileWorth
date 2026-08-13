@@ -24,7 +24,7 @@ class DashboardScreen extends StatelessWidget {
         children: [
           const _GpsStatusBanner(),
           const SizedBox(height: 16),
-          // Hero deduction value — the headline number (paywall trigger point).
+          // Hero deduction value — the headline number.
           Card(
             color: AppColors.money.withValues(alpha: 0.08),
             child: Padding(

@@ -1,11 +1,19 @@
 # MileWorth — Google Play Billing Production Setup
 
+> **Status: not wired up on the app side.** The app is now local-only and ships
+> with no paywall, no purchase flow, and no `in_app_purchase` dependency — every
+> feature is free. Nothing in the app can start a purchase today, so the steps
+> below are only needed if you reintroduce a Pro tier.
+>
+> The **server** half is still here and still tested
+> (`backend/src/utils/googlePlay.js`, `POST /billing/verify`), so it's ready
+> whenever the app side comes back.
+
 The verification **code** is done (`backend/src/utils/googlePlay.js`, unit-tested).
 Until the steps below are completed, `POST /billing/verify` returns **501** in
 production and Pro is never granted — which is the safe default.
 
-The app buys product id **`mileworth_pro_monthly`** (see
-`app/lib/services/subscription_service.dart`). The package id is
+The intended product id is **`mileworth_pro_monthly`** and the package id is
 **`com.mileworth.app`**.
 
 ## 1. Create the subscription product in Play Console

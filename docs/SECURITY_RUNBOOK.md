@@ -4,6 +4,12 @@ Operational steps that must be done in the **Atlas** and **Render** dashboards.
 Code-side protections (no committed secrets, production refuses weak `JWT_SECRET`,
 billing never grants Pro without verification) are already in place.
 
+> **Scope note:** the mobile app is local-only and does not call this API, so no
+> app users are affected by anything here — rotating credentials or even taking
+> the service down cannot break the app. The leaked credential in step 1 is still
+> worth rotating: the cluster is reachable from the internet and the old password
+> still works until you change it.
+
 ## 1. Rotate the leaked MongoDB password  ⚠️ do this first
 
 1. Go to **MongoDB Atlas → Database Access** (left sidebar).

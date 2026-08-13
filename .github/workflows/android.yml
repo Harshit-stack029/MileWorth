@@ -22,8 +22,6 @@ jobs:
       KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
       FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-      # API the released build points at. Set as a repo variable.
-      API_BASE_URL: ${{ vars.API_BASE_URL }}
       # Google Maps API key. build.gradle.kts reads this env var and injects it
       # into AndroidManifest as ${MAPS_API_KEY}; empty when the secret is unset,
       # so the map tiles simply won't load.
@@ -45,14 +43,8 @@ jobs:
       - run: flutter pub get
 
       # Debug APK — always built, handy for quick install / testing.
-      # Points at API_BASE_URL (repo variable) when set, else the default.
       - name: Build debug APK
-        run: |
-          if [ -n "$API_BASE_URL" ]; then
-            flutter build apk --debug --dart-define=API_BASE_URL=$API_BASE_URL
-          else
-            flutter build apk --debug
-          fi
+        run: flutter build apk --debug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -65,12 +57,7 @@ jobs:
       # debug signing (see android/app/build.gradle.kts), so this still produces
       # an installable APK for testers without configuring secrets.
       - name: Build release APK (split per ABI)
-        run: |
-          if [ -n "$API_BASE_URL" ]; then
-            flutter build apk --release --split-per-abi --dart-define=API_BASE_URL=$API_BASE_URL
-          else
-            flutter build apk --release --split-per-abi
-          fi
+        run: flutter build apk --release --split-per-abi
 
       - name: Upload release APKs
         uses: actions/upload-artifact@v4
@@ -83,11 +70,7 @@ jobs:
       # is the primary download attached to the GitHub Release below.
       - name: Build universal release APK
         run: |
-          if [ -n "$API_BASE_URL" ]; then
-            flutter build apk --release --dart-define=API_BASE_URL=$API_BASE_URL
-          else
-            flutter build apk --release
-          fi
+          flutter build apk --release
           cp build/app/outputs/flutter-apk/app-release.apk \
              "build/app/outputs/flutter-apk/MileWorth-${{ github.ref_name }}.apk"
 
@@ -124,13 +107,7 @@ jobs:
       # Bundle itself lets Play deliver only each device's CPU arch (~7-9 MB).
       - name: Build release AAB
         if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
-        run: |
-          COMMON="--release --obfuscate --split-debug-info=build/symbols"
-          if [ -n "$API_BASE_URL" ]; then
-            flutter build appbundle $COMMON --dart-define=API_BASE_URL=$API_BASE_URL
-          else
-            flutter build appbundle $COMMON
-          fi
+        run: flutter build appbundle --release --obfuscate --split-debug-info=build/symbols
 
       - name: Upload release AAB
         if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''

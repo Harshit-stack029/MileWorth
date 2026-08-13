@@ -31,18 +31,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-
   # State management
   provider: ^6.1.2
-  # REST calls to the MileWorth backend
-  http: ^1.2.2
-  # App preferences (onboarding flag, server URL, offline outbox).
+  # On-device store for trips, expenses and preferences. The app is local-only:
+  # there is no account and no server call, so this is the system of record.
   shared_preferences: ^2.3.2
-  # Encrypted storage for the auth token (Keychain / Android Keystore).
-  flutter_secure_storage: ^9.2.2
   # Number / currency / date formatting
   intl: ^0.19.0
   # GPS location + distance (Sprint 2 auto-tracking). Re-exports AndroidSettings /
@@ -55,8 +48,6 @@ dependencies:
   image_picker: ^1.1.2
   share_plus: ^10.1.2
   path_provider: ^2.1.4
-  # Sprint 4: Google Play / App Store subscription billing
-  in_app_purchase: ^3.2.0
   # Render brand SVG logo in-app
   flutter_svg: ^2.0.10+1
   # Native splash runtime control (preserve/remove); generator config below

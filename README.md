@@ -7,27 +7,25 @@ See [`requirements-2.md`](./requirements-2.md) for the full spec.
 ## Repository layout
 
 ```
-backend/   Node.js + Express REST API  ->  MongoDB Atlas
-app/        Flutter mobile app (Android first)
+app/        Flutter mobile app (Android first) — local-only, no account
+backend/   Node.js + Express REST API  ->  MongoDB Atlas (deployed, not used by the app)
 ```
 
-The Flutter app never talks to MongoDB directly — all data flows through the backend API over HTTPS (see Architecture in the requirements).
+> **The shipped app is local-only.** It has no login and makes no API calls:
+> trips, expenses, and preferences live on the device in `SharedPreferences`
+> (`app/lib/services/local_store.dart`), and summaries, insights, and reports are
+> computed on-device. The `backend/` service still exists and still deploys — it
+> keeps its own tests and is available for a future sync/multi-device feature —
+> but **no current app build talks to it**. Treat the two as independent until
+> that changes.
 
 ## Build phases
 
-- **Phase 1 — Core:** auto trip tracking, classification, deduction calc, dashboard, manual trips. *(in progress)*
-- **Phase 2 — Reports & expenses:** PDF/CSV reports, expenses + receipts, named locations, sharing.
-- **Phase 3 — Insights & polish:** charts, offline sync, auto-classification rules.
+- **Phase 1 — Core:** auto trip tracking, classification, deduction calc, dashboard, manual trips. *(done)*
+- **Phase 2 — Reports & expenses:** CSV reports, expenses + receipts, sharing. *(done; PDF export needs a server and is not in the local-only build)*
+- **Phase 3 — Insights & polish:** charts, auto-classification rules. *(done)*
 
 ## Getting started
-
-### Backend
-```bash
-cd backend
-cp .env.example .env      # fill in MONGODB_URI (Atlas) and JWT_SECRET
-npm install
-npm run dev               # starts on http://localhost:4000
-```
 
 ### App
 ```bash
@@ -36,7 +34,17 @@ flutter pub get
 flutter run               # against a connected Android device/emulator
 ```
 
-Point the app at the backend via `--dart-define=API_BASE_URL=http://10.0.2.2:4000` (Android emulator) or your machine's LAN IP on a physical device.
+No backend or configuration is needed — the app runs standalone. (Map tiles on
+the trip-detail screen need a Google Maps API key; see `docs/MAPS_SETUP.md`.)
+
+### Backend (optional — the app does not use it)
+```bash
+cd backend
+cp .env.example .env      # fill in MONGODB_URI (Atlas) and JWT_SECRET
+npm install
+npm run dev               # starts on http://localhost:4000
+npm test                  # unit tests, no database required
+```
 
 ## Deploying the backend to Render
 
@@ -56,10 +64,9 @@ as a free Render web service.
    auto-generated; the rest have defaults. `PORT` is injected by Render.
 5. **Deploy & verify.** Once live, hit `https://<your-service>.onrender.com/health`
    — it should return `{"status":"ok"}`.
-6. **Point the app at it.**
-   ```bash
-   flutter run --dart-define=API_BASE_URL=https://<your-service>.onrender.com
-   ```
+
+The current app build does not call this service, so there is no app-side step
+after deploying.
 
 > **Free-tier note:** the service spins down after ~15 min idle, so the first
 > request after a pause takes a few seconds to cold-start. Upgrade the plan in
@@ -91,8 +98,7 @@ Two workflows live in `.github/workflows/`:
    | `ANDROID_KEY_PROPERTIES` | contents of your `android/key.properties` (see `key.properties.example`) |
    | `FIREBASE_APP_ID` | Firebase Android app ID (optional, for distribution) |
    | `FIREBASE_SERVICE_ACCOUNT` | Firebase service-account JSON (optional) |
-3. **Add a repo variable** `API_BASE_URL` = your Render URL, so release builds
-   point at production.
+(There is no `API_BASE_URL` to configure: the app is local-only and ignores it.)
 
 Local release signing: copy `key.properties.example` → `android/key.properties`,
 put your `.jks` at `android/app/upload-keystore.jks`. Both are gitignored.

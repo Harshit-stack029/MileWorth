@@ -17,7 +17,10 @@ app/build/
 app/.idea/
 app/*.iml
 app/.packages
-app/pubspec.lock
+# app/pubspec.lock is intentionally NOT ignored: this is an application, not a
+# library, so the lockfile is committed to keep CI and release builds resolving
+# the same dependency versions as local dev (same reason backend/package-lock.json
+# is committed and CI uses `npm ci`).
 
 # OS / editor
 .DS_Store
