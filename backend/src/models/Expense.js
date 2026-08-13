@@ -13,6 +13,14 @@ const expenseSchema = new mongoose.Schema(
     vendor: { type: String, trim: true },
     category: { type: String, trim: true },
     amount: { type: Number, required: true, min: 0 },
+    currency: { type: String, trim: true, uppercase: true, default: 'USD' },
+    paymentMethod: {
+      type: String,
+      enum: ['cash', 'card', 'other'],
+      default: 'other',
+    },
+    notes: { type: String, trim: true },
+    isDeductible: { type: Boolean, default: true },
     receiptImageUrl: String,
   },
   { timestamps: true }

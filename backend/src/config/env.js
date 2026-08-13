@@ -50,9 +50,10 @@ module.exports = {
   googleServiceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   androidPackageName: process.env.ANDROID_PACKAGE_NAME || 'com.mileworth.app',
   // Mock billing (grant Pro WITHOUT verifying a purchase) is for local UX
-  // testing only. It requires an explicit opt-in flag rather than keying off
-  // NODE_ENV, so a misconfigured deployment can never hand out free Pro.
-  allowMockBilling: process.env.ALLOW_MOCK_BILLING === 'true',
+  // testing only. It needs an explicit opt-in flag AND a non-production
+  // environment, so neither a stray flag nor a misconfigured deployment can
+  // ever hand out free Pro in production.
+  allowMockBilling: process.env.ALLOW_MOCK_BILLING === 'true' && nodeEnv !== 'production',
   // Outbound email (password reset, verification). SMTP is optional: when
   // unset, emails are logged to the server console instead of sent, so dev and
   // tests work without a mail provider.

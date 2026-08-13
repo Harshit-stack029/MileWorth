@@ -102,7 +102,16 @@ const register = asyncHandler(async (req, res) => {
   const user = new User({ email: normalizedEmail });
   await user.setPassword(password);
   await user.save();
-  await sendVerificationEmail(user);
+  // The account is already persisted. Verification email is non-blocking (the
+  // dashboard soft-gates unverified accounts and offers a resend), so a mail
+  // outage must NOT fail the signup — otherwise the client sees a 500, the user
+  // already exists, and a retry dead-ends into 409 with no JWT ever returned.
+  try {
+    await sendVerificationEmail(user);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[auth] verification email failed to send on register:', err.message);
+  }
   return res.status(201).json({ token: signToken(user), user: user.toPublicJSON() });
 });
 

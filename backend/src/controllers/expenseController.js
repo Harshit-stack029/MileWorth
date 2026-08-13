@@ -20,13 +20,44 @@ function validateReceipt(receiptImageUrl) {
   return null;
 }
 
+// Keep in sync with the enum in models/Expense.js.
+const PAYMENT_METHODS = ['cash', 'card', 'other'];
+
+// Returns an error string if paymentMethod is provided but invalid, else null.
+function validatePaymentMethod(paymentMethod) {
+  if (paymentMethod == null) return null;
+  if (!PAYMENT_METHODS.includes(paymentMethod)) {
+    return `paymentMethod must be one of: ${PAYMENT_METHODS.join(', ')}`;
+  }
+  return null;
+}
+
+// Fields the schema gives a default. Persisting an explicit null would defeat
+// that default rather than fall back to it — paymentMethod would fail the enum
+// validator, and an `isDeductible: null` would quietly drop the expense out of
+// every deduction total. Treat it as a client error instead.
+const DEFAULTED_FIELDS = ['currency', 'paymentMethod', 'isDeductible'];
+
+// Returns an error string if a defaulted field was explicitly set to null.
+function validateDefaultedFields(body) {
+  for (const field of DEFAULTED_FIELDS) {
+    if (body[field] === null) {
+      return `${field} may not be null — omit it to use the default`;
+    }
+  }
+  return null;
+}
+
 const listExpenses = asyncHandler(async (req, res) => {
   const expenses = await Expense.find({ userId: req.user.userId }).sort({ date: -1 });
   res.json({ expenses });
 });
 
 const createExpense = asyncHandler(async (req, res) => {
-  const { date, vendor, category, amount, receiptImageUrl } = req.body;
+  const {
+    date, vendor, category, amount, receiptImageUrl,
+    currency, paymentMethod, notes, isDeductible,
+  } = req.body;
   if (date == null || amount == null) {
     return res.status(400).json({ error: 'date and amount are required' });
   }
@@ -38,9 +69,14 @@ const createExpense = asyncHandler(async (req, res) => {
     const status = receiptError.includes('too large') ? 413 : 400;
     return res.status(status).json({ error: receiptError });
   }
+  const nullError = validateDefaultedFields(req.body);
+  if (nullError) return res.status(400).json({ error: nullError });
+  const paymentError = validatePaymentMethod(paymentMethod);
+  if (paymentError) return res.status(400).json({ error: paymentError });
   const expense = await Expense.create({
     userId: req.user.userId,
     date, vendor, category, amount, receiptImageUrl,
+    currency, paymentMethod, notes, isDeductible,
   });
   res.status(201).json({ expense });
 });
@@ -58,7 +94,16 @@ const updateExpense = asyncHandler(async (req, res) => {
       return res.status(status).json({ error: receiptError });
     }
   }
-  for (const field of ['date', 'vendor', 'category', 'amount', 'receiptImageUrl']) {
+  const nullError = validateDefaultedFields(req.body);
+  if (nullError) return res.status(400).json({ error: nullError });
+  if (req.body.paymentMethod !== undefined) {
+    const paymentError = validatePaymentMethod(req.body.paymentMethod);
+    if (paymentError) return res.status(400).json({ error: paymentError });
+  }
+  for (const field of [
+    'date', 'vendor', 'category', 'amount', 'receiptImageUrl',
+    'currency', 'paymentMethod', 'notes', 'isDeductible',
+  ]) {
     if (req.body[field] !== undefined) expense[field] = req.body[field];
   }
   await expense.save();
@@ -74,4 +119,5 @@ const deleteExpense = asyncHandler(async (req, res) => {
 module.exports = {
   listExpenses, createExpense, updateExpense, deleteExpense,
   validateReceipt, MAX_RECEIPT_CHARS,
+  validatePaymentMethod, validateDefaultedFields, PAYMENT_METHODS,
 };
