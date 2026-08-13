@@ -38,13 +38,41 @@ No backend or configuration is needed — the app runs standalone. (Map tiles on
 the trip-detail screen need a Google Maps API key; see `docs/MAPS_SETUP.md`.)
 
 ### Backend (optional — the app does not use it)
+
+**With Docker (recommended — no database to install):**
+```bash
+docker compose up          # API on http://localhost:4000 + its own MongoDB
+```
+`docker-compose.yml` runs the API alongside a MongoDB container, so you need no
+Atlas account and no local `mongod`. Source is bind-mounted and the server runs
+under `node --watch`, so edits under `backend/src` restart it automatically.
+
+```bash
+curl http://localhost:4000/health   # {"status":"ok",...}
+docker compose logs -f api          # verification / password-reset emails print here
+docker compose down                 # stop;  add -v to also wipe the database
+```
+
+Data lives in the `mongo-data` volume and survives `down`/`up`. SMTP is
+deliberately unset: the mailer logs emails to the container output instead of
+sending them, so signup and password-reset flows work without a mail provider.
+
+**Without Docker:**
 ```bash
 cd backend
 cp .env.example .env      # fill in MONGODB_URI (Atlas) and JWT_SECRET
 npm install
 npm run dev               # starts on http://localhost:4000
-npm test                  # unit tests, no database required
 ```
+
+Either way, unit tests run on the host and need no database:
+```bash
+cd backend && npm test
+```
+
+> Docker here is for local development only. Render still deploys this service
+> from its native Node runtime (`render.yaml`), so the container setup cannot
+> affect production.
 
 ## Deploying the backend to Render
 

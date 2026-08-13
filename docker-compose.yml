@@ -1,0 +1,68 @@
+# Local development stack for the MileWorth API.
+#
+#   docker compose up
+#
+# Gives you the API on http://localhost:4000 with its own MongoDB — no Atlas
+# account, no local mongod install, and no touching the deployed Render service
+# (which still builds from its native Node runtime; see render.yaml).
+#
+# The Flutter app is not part of this stack: it is a mobile app and is local-only,
+# so it neither needs nor uses the API.
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      # Published so you can point Compass/mongosh at localhost:27017 to inspect
+      # data. Drop this line if you'd rather keep it inside the compose network.
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # The API's own start-up throws if Mongo isn't reachable, so gate it on a
+      # real ping rather than just "container started".
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      # Development, deliberately: production mode makes env.js hard-fail on a
+      # weak JWT_SECRET, which is exactly what a throwaway local secret is.
+      NODE_ENV: development
+      PORT: "4000"
+      # `mongo` is the service name above — compose resolves it on its network.
+      MONGODB_URI: mongodb://mongo:27017/mileworth
+      JWT_SECRET: ${JWT_SECRET:-docker-local-development-secret-do-not-deploy}
+      JWT_EXPIRES_IN: 30d
+      DEFAULT_MILEAGE_RATE: "0.70"
+      DEFAULT_CURRENCY: USD
+      APP_PUBLIC_URL: http://localhost:4000
+      # SMTP intentionally unset: the mailer logs verification and password-reset
+      # emails to the container output instead of sending them, so signup flows
+      # work locally without a mail provider. `docker compose logs -f api` shows
+      # the links.
+      #
+      # ALLOW_MOCK_BILLING is deliberately NOT set. It grants Pro without a real
+      # purchase, and it is double-gated (flag AND non-production) — turn it on
+      # per-run with `ALLOW_MOCK_BILLING=true docker compose up` if you need it.
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Live reload: the source is bind-mounted read-only over the copy baked into
+    # the image, and --watch restarts on save. node_modules stays the image's own,
+    # which is what keeps this working across host/container platform differences.
+    command: ["node", "--watch", "src/server.js"]
+    volumes:
+      - ./backend/src:/app/src:ro
+
+volumes:
+  mongo-data:

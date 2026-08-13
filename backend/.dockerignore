@@ -1,0 +1,15 @@
+# Keep the build context small and, more importantly, keep secrets out of the
+# image. A .env copied into a layer is recoverable from the image even if a
+# later layer deletes it.
+.env
+.env.*
+!.env.example
+
+node_modules
+npm-debug.log*
+
+# Tests run on the host (`npm test`); they are not needed in the runtime image.
+test
+
+Dockerfile
+.dockerignore
