@@ -44,14 +44,21 @@ the trip-detail screen need a Google Maps API key; see `docs/MAPS_SETUP.md`.)
 docker compose up          # API on http://localhost:4000 + its own MongoDB
 ```
 `docker-compose.yml` runs the API alongside a MongoDB container, so you need no
-Atlas account and no local `mongod`. Source is bind-mounted and the server runs
-under `node --watch`, so edits under `backend/src` restart it automatically.
+Atlas account and no local `mongod`. `backend/src` is bind-mounted into the
+container, so code edits need only a restart — never a rebuild.
 
 ```bash
 curl http://localhost:4000/health   # {"status":"ok",...}
+docker compose restart api          # pick up an edit under backend/src (~1s)
 docker compose logs -f api          # verification / password-reset emails print here
 docker compose down                 # stop;  add -v to also wipe the database
 ```
+
+> Automatic file-watch reload is deliberately not used. On macOS the bind mount
+> is virtiofs, which doesn't forward host filesystem events into the Linux VM, so
+> `node --watch` silently never fires. `docker compose restart api` is the
+> reliable equivalent. Rebuild (`docker compose up -d --build`) only when
+> `package.json` changes.
 
 Data lives in the `mongo-data` volume and survives `down`/`up`. SMTP is
 deliberately unset: the mailer logs emails to the container output instead of

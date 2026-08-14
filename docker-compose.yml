@@ -57,10 +57,15 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    # Live reload: the source is bind-mounted read-only over the copy baked into
-    # the image, and --watch restarts on save. node_modules stays the image's own,
-    # which is what keeps this working across host/container platform differences.
-    command: ["node", "--watch", "src/server.js"]
+    # Source is bind-mounted read-only over the copy baked into the image, so an
+    # edit on the host takes effect with `docker compose restart api` — no
+    # rebuild. node_modules stays the image's own, which is what keeps this
+    # working across host/container platform differences.
+    #
+    # Deliberately NOT `node --watch`: on macOS the mount is virtiofs, which does
+    # not forward host filesystem events into the Linux VM, so --watch never
+    # fires and only looks like it is working. Verified — a touch produced no
+    # restart. `restart` is a second, and honest.
     volumes:
       - ./backend/src:/app/src:ro
 
