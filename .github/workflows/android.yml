@@ -42,9 +42,29 @@ jobs:
 
       - run: flutter pub get
 
+      # Tell the Dart side whether a Maps key is baked in, so screens hide the
+      # route map instead of showing a blank grey box (lib/utils/maps_config.dart).
+      - name: Set Dart defines
+        run: |
+          if [ -n "$MAPS_API_KEY" ]; then
+            echo "DART_DEFINES=--dart-define=MAPS_ENABLED=true" >> "$GITHUB_ENV"
+          else
+            echo "DART_DEFINES=--dart-define=MAPS_ENABLED=false" >> "$GITHUB_ENV"
+          fi
+
+      # Restore the permanent upload key BEFORE any release build, so every
+      # release APK and the AAB share one signature. (Without it, release builds
+      # fall back to a throwaway debug key that differs per run, which forces
+      # testers to uninstall before each update.)
+      - name: Restore keystore + key.properties
+        if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          printf '%s' "$KEY_PROPERTIES" > android/key.properties
+
       # Debug APK — always built, handy for quick install / testing.
       - name: Build debug APK
-        run: flutter build apk --debug
+        run: flutter build apk --debug $DART_DEFINES
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -57,7 +77,7 @@ jobs:
       # debug signing (see android/app/build.gradle.kts), so this still produces
       # an installable APK for testers without configuring secrets.
       - name: Build release APK (split per ABI)
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi $DART_DEFINES
 
       - name: Upload release APKs
         uses: actions/upload-artifact@v4
@@ -70,7 +90,7 @@ jobs:
       # is the primary download attached to the GitHub Release below.
       - name: Build universal release APK
         run: |
-          flutter build apk --release
+          flutter build apk --release $DART_DEFINES
           cp build/app/outputs/flutter-apk/app-release.apk \
              "build/app/outputs/flutter-apk/MileWorth-${{ github.ref_name }}.apk"
 
@@ -95,19 +115,13 @@ jobs:
             app/build/app/outputs/flutter-apk/*-release.apk
 
       # ---- Release AAB (only when signing secrets are configured) ----
-      - name: Restore keystore + key.properties
-        if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
-          printf '%s' "$KEY_PROPERTIES" > android/key.properties
-
       # --obfuscate + --split-debug-info strip Dart symbols out of the binary,
       # shrinking the download and hardening the code. The stripped symbols are
       # uploaded separately so crash reports can still be de-obfuscated. The App
       # Bundle itself lets Play deliver only each device's CPU arch (~7-9 MB).
       - name: Build release AAB
         if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''
-        run: flutter build appbundle --release --obfuscate --split-debug-info=build/symbols
+        run: flutter build appbundle --release --obfuscate --split-debug-info=build/symbols $DART_DEFINES
 
       - name: Upload release AAB
         if: env.KEYSTORE_BASE64 != '' && env.KEY_PROPERTIES != ''

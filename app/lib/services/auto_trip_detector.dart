@@ -16,9 +16,6 @@ import 'trip_tracker.dart';
 /// movement. Real driving speed sustained for a few samples promotes it to the
 /// high-accuracy [TripTracker] recording (which runs a foreground service).
 /// When the tracker auto-stops, we fall back to the sentinel.
-///
-/// The ACTIVITY_RECOGNITION permission is declared so this speed heuristic can
-/// later be replaced by true activity-recognition events without manifest churn.
 class AutoTripDetector extends ChangeNotifier {
   AutoTripDetector(this._tracker, {required this.onTripComplete});
 
@@ -58,6 +55,11 @@ class AutoTripDetector extends ChangeNotifier {
     if (enabled) await _startSentinel();
     notifyListeners();
   }
+
+  /// True when "Allow all the time" is already granted, so enabling will not
+  /// show a system prompt (and needs no in-app disclosure first).
+  Future<bool> hasBackgroundPermission() async =>
+      (await Geolocator.checkPermission()) == LocationPermission.always;
 
   /// Returns [LocationAccess.granted] when auto-tracking is now on, or the
   /// reason it could not be enabled so the UI can offer a way to fix it.

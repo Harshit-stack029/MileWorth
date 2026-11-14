@@ -79,6 +79,11 @@ hedge here: the form must match actual behaviour.
 - **Is all user data encrypted in transit?** → not applicable; no user data is
   transmitted. (Google Maps fetches map tiles over HTTPS, but that carries no
   user data of yours.)
+- **If you turn maps on** (set the `MAPS_API_KEY` secret): the Google Maps SDK
+  is a Google library inside the app, and Play counts data that SDKs send as
+  the app's own. Before submitting, check Google's "Maps SDK for Android — data
+  disclosure" page (search that name) and add whatever it lists to this form.
+  With no Maps key, the map is hidden and this does not apply.
 - **Do you provide a way for users to request that their data be deleted?** →
   users delete it themselves by clearing app data or uninstalling; there is no
   server-side copy.
@@ -88,8 +93,12 @@ hedge here: the form must match actual behaviour.
 > the app's behaviour or its privacy policy is a common cause of rejection.
 
 ## Privacy policy URL
-Required. Host `docs/PRIVACY.md` and paste the URL here. Easiest options:
-- **GitHub Pages:** repo Settings → Pages → deploy from `main`/`docs` → the file
-  is served at `https://harshit-stack029.github.io/MileWorth/PRIVACY` (after a
-  quick Markdown→HTML step or by renaming to an `.html`/index).
-- **Render static page** or any free host (Netlify, GitHub Gist rendered, etc.).
+Required, and the same link is opened from **Settings → Privacy policy** inside
+the app. Use:
+
+    https://github.com/Harshit-stack029/MileWorth/blob/main/docs/PRIVACY.md
+
+It goes live once the `fix-login-crash` branch is merged into `main` (the repo
+is public, so anyone can open it without a GitHub login). If you ever move the
+policy, change `kPrivacyPolicyUrl` in `app/lib/screens/settings_screen.dart` and
+the Play Console field together.

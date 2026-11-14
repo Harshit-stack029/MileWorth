@@ -5,6 +5,7 @@ import '../models/trip.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../utils/maps_config.dart';
 import '../widgets/trip_route_map.dart';
 import 'trip_map_screen.dart';
 
@@ -35,42 +36,45 @@ class TripDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: SizedBox(height: 180, child: TripRouteMap(trip: trip)),
-              ),
-              // Tap anywhere on the preview to open the interactive fullscreen
-              // map. The preview itself has gestures disabled so it doesn't
-              // swallow this list's scroll.
-              Positioned.fill(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: tripRoutePoints(trip).isEmpty
-                        ? null
-                        : () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => TripMapScreen(trip: trip),
+          // The route map needs a Google Maps key baked into the build. Without
+          // one it would render as a blank grey box, so leave it out.
+          if (kMapsEnabled)
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(height: 180, child: TripRouteMap(trip: trip)),
+                ),
+                // Tap anywhere on the preview to open the interactive fullscreen
+                // map. The preview itself has gestures disabled so it doesn't
+                // swallow this list's scroll.
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: tripRoutePoints(trip).isEmpty
+                          ? null
+                          : () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => TripMapScreen(trip: trip),
+                                ),
                               ),
-                            ),
+                    ),
                   ),
                 ),
-              ),
-              if (tripRoutePoints(trip).isNotEmpty)
-                Positioned(
-                  right: 8,
-                  bottom: 8,
-                  child: Chip(
-                    avatar: const Icon(Icons.fullscreen, size: 18),
-                    label: const Text('Expand'),
-                    backgroundColor: Colors.white.withValues(alpha: 0.9),
+                if (tripRoutePoints(trip).isNotEmpty)
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Chip(
+                      avatar: const Icon(Icons.fullscreen, size: 18),
+                      label: const Text('Expand'),
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
+                    ),
                   ),
-                ),
-            ],
-          ),
+              ],
+            ),
           if (hasNavigableDestination(trip)) ...[
             const SizedBox(height: 12),
             FilledButton.tonalIcon(

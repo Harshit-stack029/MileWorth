@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
-import '../services/trip_tracker.dart';
+import '../services/auto_trip_detector.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/background_location_disclosure.dart';
 
 /// First-run onboarding. The final page primes the user for the
 /// "Allow all the time" location prompt BEFORE the system dialog appears —
@@ -32,14 +33,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _Slide(
       icon: Icons.gps_fixed,
       title: 'Drives track themselves',
-      body: 'No start button. MileWorth detects when you begin and end a '
-          'drive, then you swipe to mark each trip business or personal.',
+      body: 'Turn on automatic tracking and MileWorth detects when you begin '
+          'and end a drive. Then mark each trip business or personal.',
     ),
     _Slide(
-      icon: Icons.picture_as_pdf,
+      icon: Icons.table_chart,
       title: 'Reports your accountant will love',
-      body: 'One tap exports an accountant-ready PDF or CSV of your '
-          'deductions, ready to share at tax time.',
+      body: 'One tap exports an accountant-ready CSV of your deductions, '
+          'ready to share at tax time.',
     ),
   ];
 
@@ -51,11 +52,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _finish({bool requestPermission = false}) async {
     setState(() => _busy = true);
-    final tracker = context.read<TripTracker>();
+    final detector = context.read<AutoTripDetector>();
     final appState = context.read<AppState>();
     if (requestPermission) {
-      // Show the OS prompt now that the user understands why.
-      await tracker.ensureBackgroundPermission();
+      // The priming page above is the Play "prominent disclosure"; the user
+      // just tapped to agree, so show the OS prompt and switch auto-tracking
+      // on if it was granted.
+      await detector.setEnabled(true);
     }
     await appState.completeOnboarding();
     // The app gate rebuilds and routes into the home shell once onboarding is
@@ -147,10 +150,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Text(
-            'To detect drives in the background — even when the app is closed — '
-            'Android will ask you to choose "Allow all the time".\n\n'
-            'Your location data stays private to your account and is never sold '
-            'or shared. You can turn tracking off anytime in Settings.',
+            '$kBackgroundLocationDisclosure\n\n'
+            'Android will ask you to choose "Allow all the time".',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
           ),

@@ -53,27 +53,35 @@ drive a loop, and check a trip was recorded. This is the one thing I cannot
 verify for you.
 
 ## 5. 🔴 Play Store launch prep
-- **Generate an upload keystore** (needs Java/`keytool`; not installable on your
-  Mac as-is). Easiest: run this in any environment with the JDK, or I can set up
-  a one-off GitHub Action to generate it for you — just ask:
-  ```
-  keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 \
-    -validity 10000 -alias upload
-  ```
-- **Add GitHub secrets** (repo → Settings → Secrets and variables → Actions):
-  - `ANDROID_KEYSTORE_BASE64` = `base64 -i upload-keystore.jks`
-  - `ANDROID_KEY_PROPERTIES` = the 4 lines (storePassword, keyPassword, keyAlias,
-    storeFile=upload-keystore.jks)
-  Then a tagged build produces a **signed `.aab`** for Play.
-- **Privacy policy:** host `docs/PRIVACY.md` at a public URL (see that file's
-  notes). Required by Play. It has been rewritten for the local-only app.
-- **Listing + assets:** copy is ready in `docs/STORE_LISTING.md`. You still need
-  to create the feature graphic (1024×500) and 2–8 screenshots.
-- **Data safety form:** answers are pre-written in `docs/STORE_LISTING.md`. They
-  now declare **no data collection**, which is what the app actually does —
-  don't over-declare, the form must match real behaviour.
-- **Maps API key:** the trip-route map needs `MAPS_API_KEY` set as a repo secret
-  or the map tiles won't load (see `docs/MAPS_SETUP.md`).
+
+**Done in code (Nov 2026):** unused "physical activity" permission removed;
+Play-compliant background-location disclosure shown before every location
+prompt (onboarding + Settings); Privacy policy link in Settings; onboarding no
+longer promises PDF export; route map hidden (instead of blank) when no Maps key;
+CI signs every release build with one permanent key.
+
+Still to do, in order:
+- **Upload key → GitHub secrets.** The key is already generated and lives in
+  `~/MileWorth-signing/` on your Mac (NOT in the repo). **Back that folder up**
+  (e.g. to a USB stick or password manager). Then repo → Settings → Secrets and
+  variables → Actions → **New repository secret**, twice:
+  - `ANDROID_KEYSTORE_BASE64` = contents of `upload-keystore.base64.txt`
+  - `ANDROID_KEY_PROPERTIES` = contents of `key.properties` (all 4 lines)
+  The next `v*` tag build then produces the signed `.aab` for Play
+  (Actions artifact **`mileworth-release-aab`**).
+- **Support email:** replace `support@mileworth.app` in `docs/PRIVACY.md`.
+- **Privacy policy URL:** live at
+  `https://github.com/Harshit-stack029/MileWorth/blob/main/docs/PRIVACY.md`
+  once this branch is merged into `main`.
+- **Location forms + video:** answers and a recording script are in
+  `docs/PLAY_DECLARATIONS.md`.
+- **Data safety form:** answers in `docs/STORE_LISTING.md`.
+- **Listing + assets:** copy in `docs/STORE_LISTING.md`; you still need the
+  feature graphic (1024×500) and 2–8 screenshots.
+- **Closed test:** new personal developer accounts must run a closed test with
+  12+ testers for 14 days before production is unlocked.
+- **Maps (optional):** set `MAPS_API_KEY` (see `docs/MAPS_SETUP.md`) to show
+  route maps; without it the map is simply hidden.
 
 ## 6. ⚪ Subscriptions / billing — parked
 There is no paywall and no purchase flow in the app; everything is free. The
@@ -88,5 +96,3 @@ a Pro tier back.
    placeholder `support@mileworth.app` — Play requires a real one you monitor.)
 2. **Keep or retire the backend?** It deploys and costs a free-tier slot but no
    app build uses it. I've kept it active as you asked; say the word to retire it.
-3. Want me to set up the **one-off GitHub Action to generate your keystore** so
-   you don't need Java locally?

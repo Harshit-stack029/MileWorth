@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auto_trip_detector.dart';
 import '../state/app_state.dart';
 import '../utils/format.dart';
 import '../utils/location_feedback.dart';
+import '../widgets/background_location_disclosure.dart';
+
+/// Public privacy-policy page. Must match the URL entered in Play Console.
+const String kPrivacyPolicyUrl =
+    'https://github.com/Harshit-stack029/MileWorth/blob/main/docs/PRIVACY.md';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -40,6 +46,23 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(),
         ],
+        // Play's User Data policy requires the privacy policy to be reachable
+        // from inside the app, not only from the store listing.
+        ListTile(
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: const Text('Privacy policy'),
+          trailing: const Icon(Icons.open_in_new),
+          onTap: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            final ok = await launchUrl(Uri.parse(kPrivacyPolicyUrl),
+                mode: LaunchMode.externalApplication);
+            if (!ok) {
+              messenger.showSnackBar(const SnackBar(
+                content: Text('Could not open the privacy policy'),
+              ));
+            }
+          },
+        ),
         const AboutListTile(
           icon: Icon(Icons.info_outline),
           applicationName: 'MileWorth',
@@ -117,6 +140,13 @@ class _AutoTrackingToggle extends StatelessWidget {
       value: detector.enabled,
       onChanged: (v) async {
         final messenger = ScaffoldMessenger.of(context);
+        // Play policy: show the background-location disclosure right before
+        // the permission request. Skip it when "Allow all the time" is
+        // already granted, since no prompt will follow.
+        if (v && !await detector.hasBackgroundPermission()) {
+          if (!context.mounted) return;
+          if (!await showBackgroundLocationDisclosure(context)) return;
+        }
         final access = await detector.setEnabled(v);
         // "Allow all the time" cannot be granted from a prompt on Android 11+,
         // so the message carries a button into the right settings page.

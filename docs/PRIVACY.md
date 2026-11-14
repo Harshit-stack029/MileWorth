@@ -54,7 +54,8 @@ their privacy policies, not ours.
 Two features reach the network. Both are on-demand, and neither sends us
 anything — we still receive no data at all.
 
-- **Google Maps** — the trip detail screen draws your recorded route on a map.
+- **Google Maps** — the trip detail screen draws your recorded route on a map,
+  and the dashboard shows a live map while a drive is recording.
   Rendering that map requires the Google Maps SDK to contact Google's servers for
   map tiles, which necessarily reveals the map area being viewed. Governed by
   [Google's Privacy Policy](https://policies.google.com/privacy). Your trip list,
@@ -69,10 +70,14 @@ anything — we still receive no data at all.
 
 ## Background location disclosure
 
-MileWorth requests **"Allow all the time"** location access so it can record a
-drive even when the app is not open. Location is collected only while a trip is
-being tracked, for the purpose of mileage logging, and is written only to
-on-device storage. You can disable automatic tracking or revoke location
+MileWorth collects location data to detect and record your drives and calculate
+mileage, **even when the app is closed or not in use**, if you turn on automatic
+tracking and grant **"Allow all the time"** location access. While automatic
+tracking is on, the app checks your location in a low-power mode to notice when
+a drive begins, then records the drive's route at full accuracy until it ends.
+A notification is shown whenever this is running. Location is used only for
+mileage logging and is written only to on-device storage — it is never sent to
+us, sold, or shared. You can disable automatic tracking or revoke location
 permission at any time in your device settings; the app remains usable with
 manual trip entry.
 

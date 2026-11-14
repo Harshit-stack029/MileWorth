@@ -9,6 +9,7 @@ import '../utils/location_feedback.dart';
 import '../widgets/live_trip_map.dart';
 import 'home_shell.dart';
 import 'insights_screen.dart';
+import '../utils/maps_config.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -26,7 +27,7 @@ class DashboardScreen extends StatelessWidget {
         children: [
           const _GpsStatusBanner(),
           // While a drive is recording, show it drawing itself.
-          if (context.watch<TripTracker>().tracking) ...[
+          if (kMapsEnabled && context.watch<TripTracker>().tracking) ...[
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
