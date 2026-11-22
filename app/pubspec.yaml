@@ -37,16 +37,16 @@ dependencies:
   # there is no account and no server call, so this is the system of record.
   shared_preferences: ^2.3.2
   # Number / currency / date formatting
-  intl: ^0.19.0
+  intl: ^0.20.3
   # GPS location + distance (Sprint 2 auto-tracking). Re-exports AndroidSettings /
   # ForegroundNotificationConfig used for background foreground-service GPS.
-  geolocator: ^13.0.1
+  geolocator: ^14.1.2
   # Renders the recorded trip route (decoded routePolyline) on the trip detail
   # screen. Needs a Google Maps API key — see docs/MAPS_SETUP.md.
   google_maps_flutter: ^2.9.0
   # Sprint 3: receipt capture, report sharing, temp file paths
   image_picker: ^1.1.2
-  share_plus: ^10.1.2
+  share_plus: ^13.3.1
   path_provider: ^2.1.4
   # Hands a trip's coordinates to the phone's maps app for turn-by-turn
   # directions (see lib/utils/navigation_launcher.dart).

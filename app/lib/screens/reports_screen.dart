@@ -71,10 +71,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
           'mileworth-${_d(_range.start)}_to_${_d(_range.end)}.$format';
       final file = File('${dir.path}/$name');
       await file.writeAsBytes(bytes);
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'MileWorth report',
-        text: 'My mileage report from MileWorth.',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'MileWorth report',
+          text: 'My mileage report from MileWorth.',
+        ),
       );
     } catch (e) {
       if (mounted) {

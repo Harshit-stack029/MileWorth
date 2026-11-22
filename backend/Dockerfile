@@ -8,9 +8,9 @@
 # account. Render still deploys this service from its native Node runtime (see
 # render.yaml); nothing here changes production.
 
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 WORKDIR /app
-# engines in package.json requires node >=20.
+# engines in package.json requires node >=20.19; we run the current LTS.
 ENV NODE_ENV=production
 
 # --- dependencies -----------------------------------------------------------
@@ -35,7 +35,7 @@ USER node
 
 EXPOSE 4000
 
-# Node 20 has a global fetch, so the check needs no curl/wget in the image.
+# Node has a global fetch, so the check needs no curl/wget in the image.
 # Compose declares its own healthcheck too; this one makes the image
 # self-describing when run standalone.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

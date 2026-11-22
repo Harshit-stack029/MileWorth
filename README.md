@@ -27,6 +27,9 @@ backend/   Node.js + Express REST API  ->  MongoDB Atlas (deployed, not used by 
 
 ## Getting started
 
+**Toolchain:** Flutter 3.44 (stable) for the app; Node.js 20.19+ for the
+backend (CI, Docker and Render all run Node 24 LTS).
+
 ### App
 ```bash
 cd app
@@ -111,8 +114,9 @@ after deploying.
 
 Two workflows live in `.github/workflows/`:
 
-- **`ci.yml`** — runs on every push/PR to `main`: backend `npm test` and
-  Flutter `analyze` + `test`. No secrets needed.
+- **`ci.yml`** — runs on pushes to `main` and on PRs targeting `main` (not on
+  pushes to other branches): backend `npm test` and Flutter `analyze` + `test`.
+  No secrets needed.
 - **`android.yml`** — manual (Actions → Run workflow) or on a `v*` tag. Builds a
   debug APK artifact always; builds a **signed release AAB** and pushes to
   **Firebase App Distribution** when the secrets below are set. Building in the

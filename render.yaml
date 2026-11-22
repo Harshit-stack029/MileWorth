@@ -17,7 +17,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
-        value: "20"
+        value: "24"
       # Secrets — set in the Render dashboard (sync:false keeps them out of git).
       # MongoDB Atlas connection string, INCLUDING the /mileworth database name.
       - key: MONGODB_URI
