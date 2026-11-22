@@ -6,11 +6,6 @@ MileWorth ("we", "our", or "the app") helps you automatically track your driving
 trips and calculate potential mileage tax deductions. This policy explains what
 we collect, why, and your choices. We try to keep it plain-English.
 
-> **Action required before publishing:** replace `support@mileworth.app` below
-> with a real contact email you monitor, and host this page at a public URL
-> (Google Play requires a privacy-policy link). See `docs/STORE_LISTING.md` for
-> hosting options.
-
 ## The short version
 
 **MileWorth stores everything on your device and sends none of it to us.** There
@@ -104,4 +99,4 @@ material changes, notify you in the app.
 
 ## Contact
 
-Questions or data requests: **support@mileworth.app**
+Questions or data requests: **nexsevasolution@gmail.com**

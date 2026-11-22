@@ -69,7 +69,8 @@ Still to do, in order:
   - `ANDROID_KEY_PROPERTIES` = contents of `key.properties` (all 4 lines)
   The next `v*` tag build then produces the signed `.aab` for Play
   (Actions artifact **`mileworth-release-aab`**).
-- **Support email:** replace `support@mileworth.app` in `docs/PRIVACY.md`.
+- ~~**Support email**~~ — done: `nexsevasolution@gmail.com` is in `docs/PRIVACY.md`.
+  Use the same address as the contact email in Play Console.
 - **Privacy policy URL:** live at
   `https://github.com/Harshit-stack029/MileWorth/blob/main/docs/PRIVACY.md`
   once this branch is merged into `main`.
@@ -92,7 +93,5 @@ a Pro tier back.
 ---
 
 ## ❓ Questions for you (answer any time)
-1. **Contact email** for the privacy policy / store listing? (I used a
-   placeholder `support@mileworth.app` — Play requires a real one you monitor.)
-2. **Keep or retire the backend?** It deploys and costs a free-tier slot but no
+1. **Keep or retire the backend?** It deploys and costs a free-tier slot but no
    app build uses it. I've kept it active as you asked; say the word to retire it.
