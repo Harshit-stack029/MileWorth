@@ -44,13 +44,23 @@ jobs:
 
       # Tell the Dart side whether a Maps key is baked in, so screens hide the
       # route map instead of showing a blank grey box (lib/utils/maps_config.dart).
-      - name: Set Dart defines
+      #
+      # Also stamp the version. Play rejects any upload whose versionCode is not
+      # higher than every earlier one, so it comes from the workflow run number
+      # (always increasing) instead of the fixed "+1" in pubspec.yaml. On a v*
+      # tag the versionName is the tag minus its "v" (v1.2.0 -> 1.2.0).
+      - name: Set Dart defines + version
         run: |
           if [ -n "$MAPS_API_KEY" ]; then
-            echo "DART_DEFINES=--dart-define=MAPS_ENABLED=true" >> "$GITHUB_ENV"
+            DEFINES="--dart-define=MAPS_ENABLED=true"
           else
-            echo "DART_DEFINES=--dart-define=MAPS_ENABLED=false" >> "$GITHUB_ENV"
+            DEFINES="--dart-define=MAPS_ENABLED=false"
           fi
+          DEFINES="$DEFINES --build-number=${{ github.run_number }}"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            DEFINES="$DEFINES --build-name=${GITHUB_REF_NAME#v}"
+          fi
+          echo "DART_DEFINES=$DEFINES" >> "$GITHUB_ENV"
 
       # Restore the permanent upload key BEFORE any release build, so every
       # release APK and the AAB share one signature. (Without it, release builds
