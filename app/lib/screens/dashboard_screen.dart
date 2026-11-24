@@ -9,6 +9,7 @@ import '../utils/location_feedback.dart';
 import '../widgets/live_trip_map.dart';
 import 'home_shell.dart';
 import 'insights_screen.dart';
+import 'settings_screen.dart';
 import '../utils/maps_config.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -35,6 +36,12 @@ class DashboardScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 16),
+          // No official rate for this country (e.g. India): deductions read
+          // zero until the user enters one, so say why and offer the fix.
+          if (state.user != null && state.user!.mileageRate <= 0) ...[
+            _SetRatePrompt(state: state),
+            const SizedBox(height: 16),
+          ],
           // Hero deduction value — the headline number.
           Card(
             color: AppColors.money.withValues(alpha: 0.08),
@@ -42,19 +49,23 @@ class DashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  Text('Estimated tax deductions',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Estimated tax deductions',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     formatMoney(s.totalDeductions, currency),
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          color: AppColors.money,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: AppColors.money,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  Text('Estimate only — confirm with your accountant.',
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'Estimate only — confirm with your accountant.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
@@ -85,9 +96,14 @@ class DashboardScreen extends StatelessWidget {
             Card(
               color: AppColors.personal.withValues(alpha: 0.12),
               child: ListTile(
-                leading: const Icon(Icons.flag_outlined, color: AppColors.personal),
+                leading: const Icon(
+                  Icons.flag_outlined,
+                  color: AppColors.personal,
+                ),
                 title: Text('${s.uncategorizedTrips} trips need classifying'),
-                subtitle: const Text('Tap to review so you don\'t miss a deduction'),
+                subtitle: const Text(
+                  'Tap to review so you don\'t miss a deduction',
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => HomeShell.goToTab(context, 1), // jump to Trips
               ),
@@ -95,13 +111,18 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Card(
             child: ListTile(
-              leading: const Icon(Icons.pie_chart_outline, color: AppColors.primary),
-              title: const Text('Insights'),
-              subtitle: const Text('See your drives by category and top locations'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const InsightsScreen()),
+              leading: const Icon(
+                Icons.pie_chart_outline,
+                color: AppColors.primary,
               ),
+              title: const Text('Insights'),
+              subtitle: const Text(
+                'See your drives by category and top locations',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const InsightsScreen())),
             ),
           ),
         ],
@@ -133,11 +154,12 @@ class _StatCard extends StatelessWidget {
           children: [
             Icon(icon, color: color ?? AppColors.primary),
             const SizedBox(height: 12),
-            Text(value,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 4),
             Text(label, style: Theme.of(context).textTheme.bodySmall),
           ],
@@ -167,13 +189,18 @@ class _GpsStatusBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(active ? Icons.gps_fixed : Icons.gps_off,
-              color: active ? AppColors.business : Colors.grey.shade500, size: 20),
+          Icon(
+            active ? Icons.gps_fixed : Icons.gps_off,
+            color: active ? AppColors.business : Colors.grey.shade500,
+            size: 20,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(active
-                ? 'Tracking · ${formatDistance(tracker.distanceMiles, context.watch<AppState>().distanceUnit)}'
-                : 'GPS tracking off'),
+            child: Text(
+              active
+                  ? 'Tracking · ${formatDistance(tracker.distanceMiles, context.watch<AppState>().distanceUnit)}'
+                  : 'GPS tracking off',
+            ),
           ),
           FilledButton.tonal(
             onPressed: () => _toggle(context, tracker),
@@ -191,7 +218,8 @@ class _GpsStatusBanner extends StatelessWidget {
       final payload = tracker.stop();
       if (payload == null) {
         messenger.showSnackBar(
-            const SnackBar(content: Text('Drive too short to save')));
+          const SnackBar(content: Text('Drive too short to save')),
+        );
         return;
       }
       await appState.addTrip(payload);
@@ -202,5 +230,34 @@ class _GpsStatusBanner extends StatelessWidget {
       // user cannot fix it from a prompt, a button into the right settings page.
       showLocationAccessMessage(messenger, access);
     }
+  }
+}
+
+/// Shown while the mileage rate is 0, which is the case for countries that
+/// publish no official per-distance rate.
+class _SetRatePrompt extends StatelessWidget {
+  const _SetRatePrompt({required this.state});
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = state.user!;
+    final where = user.region?.name;
+    final unit = perUnit(user.distanceUnit);
+    return Card(
+      color: AppColors.personal.withValues(alpha: 0.12),
+      child: ListTile(
+        leading: const Icon(Icons.payments_outlined, color: AppColors.personal),
+        title: const Text('Set your mileage rate'),
+        subtitle: Text(
+          '${where == null ? 'Your region has' : '$where has'} no official '
+          'rate per $unit, so deductions show '
+          '${formatMoney(0, user.currency)} until you enter the rate your '
+          'tax adviser uses.',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => showMileageRateDialog(context, state),
+      ),
+    );
   }
 }

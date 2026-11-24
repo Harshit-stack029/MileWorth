@@ -37,7 +37,7 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('Mileage rate'),
             subtitle: Text(_rateLabel(user)),
             trailing: const Icon(Icons.edit_outlined),
-            onTap: () => _editRate(context, state),
+            onTap: () => showMileageRateDialog(context, state),
           ),
           const Divider(),
           const _AutoTrackingToggle(),
@@ -61,12 +61,16 @@ class SettingsScreen extends StatelessWidget {
           trailing: const Icon(Icons.open_in_new),
           onTap: () async {
             final messenger = ScaffoldMessenger.of(context);
-            final ok = await launchUrl(Uri.parse(kPrivacyPolicyUrl),
-                mode: LaunchMode.externalApplication);
+            final ok = await launchUrl(
+              Uri.parse(kPrivacyPolicyUrl),
+              mode: LaunchMode.externalApplication,
+            );
             if (!ok) {
-              messenger.showSnackBar(const SnackBar(
-                content: Text('Could not open the privacy policy'),
-              ));
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Could not open the privacy policy'),
+                ),
+              );
             }
           },
         ),
@@ -110,7 +114,9 @@ class SettingsScreen extends StatelessWidget {
     final money = '${formatMoney(user.mileageRate, user.currency)} per $unit';
     final preset = user.region;
     final isOfficial =
-        preset != null && preset.hasOfficialRate && preset.rate == user.mileageRate;
+        preset != null &&
+        preset.hasOfficialRate &&
+        preset.rate == user.mileageRate;
     return isOfficial ? '$money · ${preset.rateSource}' : '$money · custom';
   }
 
@@ -126,9 +132,11 @@ class SettingsScreen extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.my_location),
               title: const Text('Automatic'),
-              subtitle: Text(detected != null
-                  ? 'Detected: ${detected.name}'
-                  : 'Follows your mobile network country'),
+              subtitle: Text(
+                detected != null
+                    ? 'Detected: ${detected.name}'
+                    : 'Follows your mobile network country',
+              ),
               selected: state.user?.regionAuto ?? true,
             ),
           ),
@@ -148,50 +156,89 @@ class SettingsScreen extends StatelessWidget {
       await state.chooseRegion(choice);
     }
   }
+}
 
-  Future<void> _editRate(BuildContext context, AppState state) async {
-    final user = state.user!;
-    final unit = perUnit(user.distanceUnit);
-    final controller = TextEditingController(
-        text: user.mileageRate > 0 ? user.mileageRate.toString() : '');
-    final result = await showDialog<double>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Mileage rate'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Your deduction rate per $unit in ${user.currency}. It changes '
-              'yearly and by country, so set it to match your tax authority.',
+/// Edit the mileage rate. Shared by Settings and the dashboard's
+/// "set your rate" prompt.
+Future<void> showMileageRateDialog(BuildContext context, AppState state) async {
+  final user = state.user!;
+  final result = await showDialog<double>(
+    context: context,
+    builder: (_) => _RateDialog(
+      initial: user.mileageRate,
+      currency: user.currency,
+      unit: perUnit(user.distanceUnit),
+    ),
+  );
+  if (result != null && result > 0) {
+    await state.updateSettings(mileageRate: result);
+  }
+}
+
+/// Owns its text controller so it is disposed only after the dialog's
+/// closing animation finishes (disposing it right after `showDialog`
+/// returned crashed the still-animating TextField).
+class _RateDialog extends StatefulWidget {
+  const _RateDialog({
+    required this.initial,
+    required this.currency,
+    required this.unit,
+  });
+  final double initial;
+  final String currency;
+  final String unit;
+
+  @override
+  State<_RateDialog> createState() => _RateDialogState();
+}
+
+class _RateDialogState extends State<_RateDialog> {
+  late final _controller = TextEditingController(
+    text: widget.initial > 0 ? widget.initial.toString() : '',
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Mileage rate'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Your deduction rate per ${widget.unit} in ${widget.currency}. It '
+            'changes yearly and by country, so set it to match your tax '
+            'authority.',
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              suffixText: '${widget.currency} per ${widget.unit}',
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                suffixText: '${user.currency} per $unit',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final v = double.tryParse(controller.text);
-              Navigator.pop(context, v);
-            },
-            child: const Text('Save'),
           ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () =>
+              Navigator.pop(context, double.tryParse(_controller.text.trim())),
+          child: const Text('Save'),
+        ),
+      ],
     );
-    controller.dispose();
-    if (result != null && result > 0) {
-      await state.updateSettings(mileageRate: result);
-    }
   }
 }
 

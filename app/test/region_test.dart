@@ -21,13 +21,16 @@ class FakeRegionDetector extends RegionDetector {
 }
 
 Map<String, dynamic> businessTrip(double miles) => {
-      'startTime': DateTime.utc(2026, 11, 2, 9).toIso8601String(), // a Monday
-      'endTime': DateTime.utc(2026, 11, 2, 10).toIso8601String(),
-      'distance': miles,
-      'category': 'business',
-    };
+  'startTime': DateTime.utc(2026, 11, 2, 9).toIso8601String(), // a Monday
+  'endTime': DateTime.utc(2026, 11, 2, 10).toIso8601String(),
+  'distance': miles,
+  'category': 'business',
+};
 
-Future<AppState> boot(String? country, [Map<String, Object> prefs = const {}]) async {
+Future<AppState> boot(
+  String? country, [
+  Map<String, Object> prefs = const {},
+]) async {
   SharedPreferences.setMockInitialValues({'onboarding_seen': true, ...prefs});
   final state = AppState(regionDetector: FakeRegionDetector(country));
   await state.bootstrap();
@@ -180,11 +183,13 @@ void main() {
       final s = await boot('IN');
       await s.updateSettings(mileageRate: 10);
       await s.addTrip(businessTrip(10));
-      final csv = String.fromCharCodes(await s.downloadReport(
-        format: 'csv',
-        from: DateTime(2026, 11, 1),
-        to: DateTime(2026, 11, 30),
-      ));
+      final csv = String.fromCharCodes(
+        await s.downloadReport(
+          format: 'csv',
+          from: DateTime(2026, 11, 1),
+          to: DateTime(2026, 11, 30),
+        ),
+      );
       expect(csv, contains('Distance (km)'));
       expect(csv, contains('Amount/Deduction (INR)'));
       expect(csv, contains('16.09'));
@@ -194,15 +199,52 @@ void main() {
 
   group('screens', () {
     Widget app(AppState state) => MultiProvider(
-          providers: [
-            ChangeNotifierProvider.value(value: state),
-            ChangeNotifierProvider(create: (_) => TripTracker()),
-          ],
-          child: const MileWorthApp(),
-        );
+      providers: [
+        ChangeNotifierProvider.value(value: state),
+        ChangeNotifierProvider(create: (_) => TripTracker()),
+      ],
+      child: const MileWorthApp(),
+    );
 
-    testWidgets('dashboard shows rupees and kilometres in India',
-        (tester) async {
+    testWidgets('dashboard asks for a rate in India, then hides the prompt', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'onboarding_seen': true});
+      final s = AppState(regionDetector: FakeRegionDetector('IN'));
+      await tester.pumpWidget(app(s));
+      await tester.runAsync(s.bootstrap);
+      await tester.pumpAndSettle();
+      expect(find.text('Set your mileage rate'), findsOneWidget);
+      expect(
+        find.textContaining('India has no official rate per km'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Set your mileage rate'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mileage rate'), findsOneWidget); // the dialog
+      await tester.enterText(find.byType(TextField), '10');
+      await tester.tap(find.text('Save'));
+      await tester.runAsync(
+        () => Future.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Set your mileage rate'), findsNothing);
+      expect(s.user!.mileageRate, 10);
+    });
+
+    testWidgets('no rate prompt where an official rate exists', (tester) async {
+      SharedPreferences.setMockInitialValues({'onboarding_seen': true});
+      final s = AppState(regionDetector: FakeRegionDetector('US'));
+      await tester.pumpWidget(app(s));
+      await tester.runAsync(s.bootstrap);
+      await tester.pumpAndSettle();
+      expect(find.text('Set your mileage rate'), findsNothing);
+    });
+
+    testWidgets('dashboard shows rupees and kilometres in India', (
+      tester,
+    ) async {
       SharedPreferences.setMockInitialValues({'onboarding_seen': true});
       final s = AppState(regionDetector: FakeRegionDetector('IN'));
       await tester.pumpWidget(app(s));
