@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
@@ -73,6 +74,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currency = context.watch<AppState>().user?.currency ?? 'USD';
+    // The symbol for the user's currency (₹, $, £ …), not a fixed dollar icon.
+    final symbol = NumberFormat.simpleCurrency(name: currency).currencySymbol;
     return Scaffold(
       appBar: AppBar(title: const Text('Add expense')),
       body: Form(
@@ -83,10 +87,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             TextFormField(
               controller: _amount,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Amount',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.attach_money),
+              decoration: InputDecoration(
+                labelText: 'Amount ($currency)',
+                border: const OutlineInputBorder(),
+                prefixIcon: SizedBox(
+                  width: 48,
+                  child: Center(
+                    child: Text(symbol,
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                ),
               ),
               validator: (v) {
                 final d = double.tryParse(v ?? '');

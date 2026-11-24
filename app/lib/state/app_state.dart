@@ -9,6 +9,8 @@ import '../models/summary.dart';
 import '../models/trip.dart';
 import '../models/user.dart';
 import '../services/local_store.dart';
+import '../services/region_detector.dart';
+import '../utils/regions.dart';
 
 /// App lifecycle: [unknown] while bootstrapping, then [ready]. There is no
 /// sign-in step — the app is local-only and always usable.
@@ -17,9 +19,12 @@ enum AppStatus { unknown, ready }
 /// Single source of truth for trips, expenses and preferences. Backed entirely
 /// by on-device storage ([LocalStore]); there is no account or network.
 class AppState extends ChangeNotifier {
-  AppState({LocalStore? store}) : _store = store ?? LocalStore();
+  AppState({LocalStore? store, RegionDetector? regionDetector})
+      : _store = store ?? LocalStore(),
+        _regionDetector = regionDetector ?? const RegionDetector();
 
   final LocalStore _store;
+  final RegionDetector _regionDetector;
 
   AppStatus status = AppStatus.unknown;
   AppUser? user; // local preferences (rate / currency / weekend rule)
@@ -41,6 +46,10 @@ class AppState extends ChangeNotifier {
   }
 
   double get _rate => user?.mileageRate ?? LocalStore.defaultMileageRate;
+  DistanceUnit get distanceUnit => user?.distanceUnit ?? DistanceUnit.mi;
+
+  /// Country code last reported by [RegionDetector] (null = unknown).
+  String? detectedCountry;
 
   /// Called once at startup: load preferences + data from the device.
   Future<void> bootstrap() async {
@@ -49,6 +58,61 @@ class AppState extends ChangeNotifier {
     await _loadSettings();
     await _reload();
     status = AppStatus.ready;
+    notifyListeners();
+    await syncRegion();
+  }
+
+  /// Detect the phone's country and, in automatic mode, switch currency,
+  /// distance unit and rate to that country's preset when it differs from
+  /// the one last applied. Runs at startup and whenever the app returns to
+  /// the foreground, so crossing a border updates it. A rate the user typed
+  /// is kept until the country actually changes.
+  Future<void> syncRegion() async {
+    try {
+      detectedCountry = await _regionDetector.detectCountry();
+    } catch (_) {
+      detectedCountry = null;
+    }
+    final u = user;
+    final preset = regionFor(detectedCountry);
+    if (u == null || !u.regionAuto || preset == null) {
+      notifyListeners();
+      return;
+    }
+    if (u.regionCountry == preset.code) {
+      notifyListeners();
+      return;
+    }
+    await _applyPreset(preset, auto: true);
+  }
+
+  /// User picked a region by hand: apply it and stop auto-switching.
+  Future<void> chooseRegion(String code) async {
+    final preset = regionFor(code);
+    if (preset == null) return;
+    await _applyPreset(preset, auto: false);
+  }
+
+  /// Go back to following the detected country.
+  Future<void> useAutomaticRegion() async {
+    await _store.writeSettings(regionAuto: true, regionCountry: '');
+    await _loadSettings();
+    await syncRegion();
+    notifyListeners();
+  }
+
+  Future<void> _applyPreset(RegionPreset p, {required bool auto}) async {
+    // Prefer a rate the user set for this country before, else the official one.
+    final rate = await _store.readCustomRate(p.code) ?? p.rate;
+    await _store.writeSettings(
+      currency: p.currency,
+      distanceUnit: p.unit.name,
+      mileageRate: rate,
+      regionCountry: p.code,
+      regionAuto: auto,
+    );
+    await _loadSettings();
+    await _reload(); // deductions depend on rate and unit
     notifyListeners();
   }
 
@@ -66,15 +130,22 @@ class AppState extends ChangeNotifier {
       mileageRate: (s['mileageRate'] as num).toDouble(),
       currency: s['currency'] as String,
       classifyWeekendsAsPersonal: s['classifyWeekendsAsPersonal'] as bool,
+      distanceUnit: unitFromName(s['distanceUnit'] as String?),
+      regionCountry: (s['regionCountry'] as String?)?.isEmpty ?? true
+          ? null
+          : s['regionCountry'] as String,
+      regionAuto: s['regionAuto'] as bool? ?? true,
     );
   }
 
   /// Per-trip deduction: business drives earn distance × rate; everything else
-  /// is zero. Computed on read so a rate change reprices history instantly.
+  /// is zero. Distance is stored in miles and converted to the rate's unit.
+  /// Computed on read so a rate or unit change reprices history instantly.
   Trip _tripFromMap(Map<String, dynamic> m) {
     final category = m['category'] as String? ?? 'uncategorized';
     final distance = (m['distance'] as num?)?.toDouble() ?? 0;
-    final deduction = category == 'business' ? distance * _rate : 0.0;
+    final deduction =
+        category == 'business' ? milesTo(distanceUnit, distance) * _rate : 0.0;
     return Trip.fromJson({...m, 'deductionValue': deduction});
   }
 
@@ -229,14 +300,20 @@ class AppState extends ChangeNotifier {
 
     String d(DateTime t) => t.toLocal().toIso8601String().substring(0, 10);
     final rows = <List<String>>[
-      ['Type', 'Date', 'Category/Vendor', 'Distance (mi)', 'Amount/Deduction'],
+      [
+        'Type',
+        'Date',
+        'Category/Vendor',
+        'Distance (${distanceUnit.name})',
+        'Amount/Deduction (${user?.currency ?? LocalStore.defaultCurrency})',
+      ],
     ];
     for (final t in trips.where((t) => inRange(t.startTime))) {
       rows.add([
         'Trip',
         d(t.startTime),
         t.category,
-        t.distance.toStringAsFixed(2),
+        milesTo(distanceUnit, t.distance).toStringAsFixed(2),
         t.deductionValue.toStringAsFixed(2),
       ]);
     }
@@ -292,6 +369,10 @@ class AppState extends ChangeNotifier {
     String? currency,
     bool? classifyWeekendsAsPersonal,
   }) async {
+    final country = user?.regionCountry;
+    if (mileageRate != null && country != null) {
+      await _store.writeCustomRate(country, mileageRate);
+    }
     await _store.writeSettings(
       mileageRate: mileageRate,
       currency: currency,

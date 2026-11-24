@@ -65,7 +65,7 @@ class _TripTile extends StatelessWidget {
           backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(Icons.navigation, color: color, size: 20),
         ),
-        title: Text(formatMiles(trip.distance),
+        title: Text(formatDistance(trip.distance, state.distanceUnit),
             style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(formatDateTime(trip.startTime)),
         trailing: Column(

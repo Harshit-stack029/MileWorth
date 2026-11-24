@@ -92,6 +92,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<AppState>().user?.currency ?? 'USD';
+    final unit = context.watch<AppState>().distanceUnit;
     final s = _summary;
 
     return ListView(
@@ -119,7 +120,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   Text('Preview', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   _row('Trips', '${s['totalTrips']} (${s['businessTrips']} business)'),
-                  _row('Business miles', formatMiles((s['businessMiles'] as num).toDouble())),
+                  _row('Business ${distanceWord(unit).toLowerCase()}',
+                      formatDistance((s['businessMiles'] as num).toDouble(), unit)),
                   _row('Expenses', formatMoney((s['totalExpenses'] as num).toDouble(), currency)),
                   const Divider(),
                   _row(

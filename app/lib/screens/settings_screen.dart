@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/user.dart';
 import '../services/auto_trip_detector.dart';
 import '../state/app_state.dart';
 import '../utils/format.dart';
 import '../utils/location_feedback.dart';
+import '../utils/regions.dart';
 import '../widgets/background_location_disclosure.dart';
 
 /// Public privacy-policy page. Must match the URL entered in Play Console.
@@ -24,11 +26,16 @@ class SettingsScreen extends StatelessWidget {
       children: [
         if (user != null) ...[
           ListTile(
-            leading: const Icon(Icons.attach_money),
+            leading: const Icon(Icons.public),
+            title: const Text('Region'),
+            subtitle: Text(_regionLabel(state)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _pickRegion(context, state),
+          ),
+          ListTile(
+            leading: const Icon(Icons.payments_outlined),
             title: const Text('Mileage rate'),
-            subtitle: Text(
-              '${formatMoney(user.mileageRate, user.currency)} per mile · ${user.currency}',
-            ),
+            subtitle: Text(_rateLabel(user)),
             trailing: const Icon(Icons.edit_outlined),
             onTap: () => _editRate(context, state),
           ),
@@ -79,9 +86,74 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  String _regionLabel(AppState state) {
+    final user = state.user!;
+    final region = user.region;
+    final name = region?.name ?? 'Not set';
+    final detail = '${user.currency} · ${user.distanceUnit.name}';
+    if (!user.regionAuto) return '$name · $detail (chosen)';
+    final detected = regionFor(state.detectedCountry);
+    if (detected == null && state.detectedCountry != null) {
+      return '$name · $detail (automatic; ${state.detectedCountry} not supported)';
+    }
+    return '$name · $detail (automatic)';
+  }
+
+  String _rateLabel(AppUser user) {
+    final unit = perUnit(user.distanceUnit);
+    if (user.mileageRate <= 0) {
+      final where = user.region?.name;
+      return where == null
+          ? 'Not set: tap to enter your rate per $unit'
+          : 'No official rate for $where: tap to enter yours per $unit';
+    }
+    final money = '${formatMoney(user.mileageRate, user.currency)} per $unit';
+    final preset = user.region;
+    final isOfficial =
+        preset != null && preset.hasOfficialRate && preset.rate == user.mileageRate;
+    return isOfficial ? '$money · ${preset.rateSource}' : '$money · custom';
+  }
+
+  Future<void> _pickRegion(BuildContext context, AppState state) async {
+    final detected = regionFor(state.detectedCountry);
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Region'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'auto'),
+            child: ListTile(
+              leading: const Icon(Icons.my_location),
+              title: const Text('Automatic'),
+              subtitle: Text(detected != null
+                  ? 'Detected: ${detected.name}'
+                  : 'Follows your mobile network country'),
+              selected: state.user?.regionAuto ?? true,
+            ),
+          ),
+          const Divider(),
+          for (final r in allRegions)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, r.code),
+              child: Text('${r.name}  ·  ${r.currency}, ${r.unit.name}'),
+            ),
+        ],
+      ),
+    );
+    if (choice == null) return;
+    if (choice == 'auto') {
+      await state.useAutomaticRegion();
+    } else {
+      await state.chooseRegion(choice);
+    }
+  }
+
   Future<void> _editRate(BuildContext context, AppState state) async {
-    final controller =
-        TextEditingController(text: state.user?.mileageRate.toString() ?? '');
+    final user = state.user!;
+    final unit = perUnit(user.distanceUnit);
+    final controller = TextEditingController(
+        text: user.mileageRate > 0 ? user.mileageRate.toString() : '');
     final result = await showDialog<double>(
       context: context,
       builder: (_) => AlertDialog(
@@ -89,17 +161,17 @@ class SettingsScreen extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'The standard rate per mile. It changes yearly and by country, '
-              'so set it to match your tax authority.',
+            Text(
+              'Your deduction rate per $unit in ${user.currency}. It changes '
+              'yearly and by country, so set it to match your tax authority.',
             ),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                prefixText: 'per mile  ',
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                suffixText: '${user.currency} per $unit',
               ),
             ),
           ],

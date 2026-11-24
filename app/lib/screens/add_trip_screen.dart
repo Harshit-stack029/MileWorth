@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
+import '../utils/regions.dart';
 
 /// Manual trip entry (FR-6). Until GPS auto-tracking lands, this is how trips
 /// get created.
@@ -59,10 +60,12 @@ class _AddTripScreenState extends State<AddTripScreen> {
     }
     setState(() => _busy = true);
     try {
-      await context.read<AppState>().addTrip({
+      final state = context.read<AppState>();
+      await state.addTrip({
         'startTime': _start.toUtc().toIso8601String(),
         'endTime': _end.toUtc().toIso8601String(),
-        'distance': double.parse(_distance.text),
+        // Typed in the user's unit; trips are stored in miles.
+        'distance': toMiles(state.distanceUnit, double.parse(_distance.text)),
         'category': _category,
       });
       if (mounted) Navigator.pop(context);
@@ -78,6 +81,7 @@ class _AddTripScreenState extends State<AddTripScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final unit = context.watch<AppState>().distanceUnit;
     return Scaffold(
       appBar: AppBar(title: const Text('Add trip')),
       body: Form(
@@ -88,10 +92,12 @@ class _AddTripScreenState extends State<AddTripScreen> {
             TextFormField(
               controller: _distance,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Distance (miles)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.route),
+              decoration: InputDecoration(
+                labelText: unit == DistanceUnit.km
+                    ? 'Distance (km)'
+                    : 'Distance (miles)',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.route),
               ),
               validator: (v) {
                 final d = double.tryParse(v ?? '');

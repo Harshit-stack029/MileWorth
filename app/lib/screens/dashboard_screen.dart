@@ -65,8 +65,8 @@ class DashboardScreen extends StatelessWidget {
               Expanded(
                 child: _StatCard(
                   icon: Icons.route,
-                  label: 'Miles tracked',
-                  value: formatMiles(s.totalMiles),
+                  label: '${distanceWord(state.distanceUnit)} tracked',
+                  value: formatDistance(s.totalMiles, state.distanceUnit),
                 ),
               ),
               const SizedBox(width: 12),
@@ -172,7 +172,7 @@ class _GpsStatusBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(active
-                ? 'Tracking · ${formatMiles(tracker.distanceMiles)}'
+                ? 'Tracking · ${formatDistance(tracker.distanceMiles, context.watch<AppState>().distanceUnit)}'
                 : 'GPS tracking off'),
           ),
           FilledButton.tonal(

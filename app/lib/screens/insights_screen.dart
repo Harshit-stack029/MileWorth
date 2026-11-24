@@ -30,6 +30,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<AppState>().user?.currency ?? 'USD';
+    final unit = context.watch<AppState>().distanceUnit;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Insights')),
@@ -72,7 +73,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       child: ListTile(
                         leading: Icon(Icons.circle, color: categoryColor(c.category), size: 16),
                         title: Text(_label(c.category)),
-                        subtitle: Text('${c.count} trips · ${formatMiles(c.miles)}'),
+                        subtitle: Text('${c.count} ${c.count == 1 ? 'trip' : 'trips'} · ${formatDistance(c.miles, unit)}'),
                         trailing: c.value > 0
                             ? Text(formatMoney(c.value, currency),
                                 style: const TextStyle(

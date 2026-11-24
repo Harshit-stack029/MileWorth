@@ -85,7 +85,7 @@ class TripDetailScreen extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           Center(
-            child: Text(formatMiles(trip.distance),
+            child: Text(formatDistance(trip.distance, state.distanceUnit),
                 style: Theme.of(context)
                     .textTheme
                     .headlineMedium

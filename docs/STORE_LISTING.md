@@ -26,7 +26,8 @@ deductions — so you never miss a write-off again.
 WHY MILEWORTH
 • Automatic GPS trip tracking — drives are detected and recorded for you.
 • Business vs. personal classification with one tap (or automatic rules).
-• Instant deduction estimates using the current IRS standard mileage rate.
+• Instant deduction estimates using your country's official mileage rate
+  (US, UK, Canada, Australia, Germany), in your currency, in km or miles.
 • A clear dashboard showing your miles, work drives, and total deductions.
 • CSV reports you can hand to your accountant or attach to your taxes.
 • Expense tracking with receipt photos.

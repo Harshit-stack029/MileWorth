@@ -1,6 +1,6 @@
 # MileWorth — Privacy Policy
 
-**Effective date:** 13 August 2026
+**Effective date:** 24 November 2026
 
 MileWorth ("we", "our", or "the app") helps you automatically track your driving
 trips and calculate potential mileage tax deductions. This policy explains what
@@ -25,7 +25,13 @@ The app stores the following **locally on your device**:
 - **Trip and expense data** — distance, time, business/personal classification,
   computed deduction values, and any expenses or receipt photos you choose to
   add.
-- **Preferences** — your mileage rate, currency, and tracking settings.
+- **Preferences** — your region, mileage rate, currency, distance unit, and
+  tracking settings.
+- **Country code** — to pick your currency, distance unit (km or miles), and
+  standard mileage rate, the app reads the two-letter country code of your
+  mobile network or SIM card (falling back to your phone's region setting). It
+  is read on your device, needs no location permission, and is never sent
+  anywhere. You can choose a region yourself in Settings instead.
 
 We do **not** sell your data, we do **not** use third-party advertising or
 analytics SDKs, and there are no accounts, passwords, or in-app purchases.

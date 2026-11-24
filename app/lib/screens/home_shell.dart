@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 
+import '../state/app_state.dart';
 import '../theme.dart';
 import 'add_trip_screen.dart';
 import 'dashboard_screen.dart';
@@ -23,6 +25,24 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  // Re-check the phone's country whenever the app comes back to the front,
+  // so currency/unit/rate follow the user across borders.
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(
+    onResume: () => context.read<AppState>().syncRegion(),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle; // start listening
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
 
   void _setIndex(int i) => setState(() => _index = i);
 

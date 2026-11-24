@@ -13,9 +13,12 @@ class LocalStore {
   static const _mileageRateKey = 'mileage_rate';
   static const _currencyKey = 'currency';
   static const _weekendsKey = 'weekends_personal';
+  static const _unitKey = 'distance_unit';
+  static const _regionKey = 'region_country';
+  static const _regionAutoKey = 'region_auto';
 
-  // Default US IRS standard mileage rate; the user can change it in Settings.
-  static const double defaultMileageRate = 0.67;
+  // US defaults until a region is detected (see utils/regions.dart).
+  static const double defaultMileageRate = 0.725;
   static const String defaultCurrency = 'USD';
 
   Future<List<Map<String, dynamic>>> _readList(String key) async {
@@ -50,13 +53,31 @@ class LocalStore {
       'mileageRate': prefs.getDouble(_mileageRateKey) ?? defaultMileageRate,
       'currency': prefs.getString(_currencyKey) ?? defaultCurrency,
       'classifyWeekendsAsPersonal': prefs.getBool(_weekendsKey) ?? false,
+      'distanceUnit': prefs.getString(_unitKey) ?? 'mi',
+      'regionCountry': prefs.getString(_regionKey),
+      'regionAuto': prefs.getBool(_regionAutoKey) ?? true,
     };
+  }
+
+  /// A rate the user typed for a given country, remembered so that switching
+  /// region and coming back restores it instead of the official default.
+  Future<double?> readCustomRate(String country) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble('custom_rate_${country.toUpperCase()}');
+  }
+
+  Future<void> writeCustomRate(String country, double rate) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('custom_rate_${country.toUpperCase()}', rate);
   }
 
   Future<void> writeSettings({
     double? mileageRate,
     String? currency,
     bool? classifyWeekendsAsPersonal,
+    String? distanceUnit,
+    String? regionCountry,
+    bool? regionAuto,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     if (mileageRate != null) await prefs.setDouble(_mileageRateKey, mileageRate);
@@ -64,5 +85,8 @@ class LocalStore {
     if (classifyWeekendsAsPersonal != null) {
       await prefs.setBool(_weekendsKey, classifyWeekendsAsPersonal);
     }
+    if (distanceUnit != null) await prefs.setString(_unitKey, distanceUnit);
+    if (regionCountry != null) await prefs.setString(_regionKey, regionCountry);
+    if (regionAuto != null) await prefs.setBool(_regionAutoKey, regionAuto);
   }
 }
